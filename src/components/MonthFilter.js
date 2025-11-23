@@ -1,5 +1,5 @@
 import React from 'react';
-import { extractMonth, MONTH_MAP, MONTH_ORDER, getMonthLabel } from '../utils/dateUtils';
+import { extractMonth, MONTH_ORDER, getMonthLabel } from '../utils/dateUtils';
 
 /**
  * Extract unique months from transactions

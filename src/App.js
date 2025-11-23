@@ -13,7 +13,6 @@ import { categorizeAllTransactions } from './utils/llmCategorizer';
 import { calculateFootprint } from './utils/emissionCalculator';
 import { isMonthMatch } from './utils/dateUtils';
 import logger from './utils/logger';
-import { PROGRESS } from './constants';
 import emissionFactors from './data/emissionFactors.json';
 
 function App() {

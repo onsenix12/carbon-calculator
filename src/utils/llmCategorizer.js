@@ -9,8 +9,8 @@
  * Cost: ~$0.0003 per transaction (100 transactions = ~$0.03)
  */
 
-import { buildClaudePrompt, CLAUDE_MODEL, CLAUDE_API_CONFIG, API_CONFIG, LLM_CONFIG, VALIDATION } from '../constants';
-import { ValidationError, APIError, NetworkError, ERROR_CODES, handleAPIResponse, isNetworkError } from './errors';
+import { buildClaudePrompt, CLAUDE_API_CONFIG, API_CONFIG, LLM_CONFIG, VALIDATION } from '../constants';
+import { ValidationError, APIError, NetworkError, isNetworkError } from './errors';
 import logger from './logger';
 import { validateNonEmpty, validateNonEmptyArray, validateEmissionFactors } from './validation';
 

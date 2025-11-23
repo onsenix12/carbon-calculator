@@ -5,7 +5,7 @@
  * Uses Singapore-specific emission factors (SEFR)
  */
 
-import { parseTransactionDate, formatDate, MONTH_INDEX_MAP } from './dateUtils';
+import { parseTransactionDate, formatDate } from './dateUtils';
 import logger from './logger';
 import { CARBON_EQUIVALENTS, REDUCTION_PERCENTAGES, SINGAPORE_AVERAGES, VALIDATION } from '../constants';
 import { validateNonEmptyArray, validateEmissionFactors } from './validation';
