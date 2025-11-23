@@ -52,6 +52,11 @@ const getAPIKey = () => {
  * @returns {Promise<Object>} - { category, subcategory, confidence }
  */
 export const categorizeMerchantWithLLM = async (merchantName, categories) => {
+  // Validate merchantName before making API call
+  if (!merchantName || merchantName.trim() === '') {
+    throw new Error('merchantName is required and cannot be empty');
+  }
+
   // If using proxy, send simplified request
   if (USE_PROXY) {
     try {
@@ -61,7 +66,7 @@ export const categorizeMerchantWithLLM = async (merchantName, categories) => {
           'content-type': 'application/json'
         },
         body: JSON.stringify({
-          merchantName,
+          merchantName: merchantName.trim(),
           categories
         })
       });
@@ -270,7 +275,7 @@ const findBestSubcategory = (merchantName, category) => {
 export const categorizeAllTransactions = async (
   transactions,
   emissionFactors,
-  options = { useLLM: true, batchSize: 5 }
+  options = { useLLM: true, batchSize: 5, onProgress: null }
 ) => {
   console.log('🤖 Categorizing transactions...');
   console.log(`   Total transactions: ${transactions.length}`);
@@ -296,19 +301,36 @@ export const categorizeAllTransactions = async (
     const transaction = transactions[i];
     let result;
 
+    // Use merchantCleaned if available, otherwise fall back to merchant
+    const merchantName = (transaction.merchantCleaned && transaction.merchantCleaned.trim()) 
+      ? transaction.merchantCleaned.trim() 
+      : (transaction.merchant && transaction.merchant.trim()) 
+        ? transaction.merchant.trim() 
+        : '';
+
+    // If no merchant name available, skip LLM and use keyword matching
+    if (!merchantName) {
+      const fallbackName = transaction.merchant || '';
+      result = categorizeMerchantWithKeywords(fallbackName, emissionFactors);
+      if (result.category !== 'uncategorized') {
+        keywordCount++;
+      } else {
+        uncategorizedCount++;
+      }
+    }
     // If CORS was detected, skip LLM for all remaining transactions
-    if (useLLM && !corsDetected) {
+    else if (useLLM && !corsDetected) {
       try {
         // Try LLM categorization
         const llmResult = await categorizeMerchantWithLLM(
-          transaction.merchantCleaned,
+          merchantName,
           emissionFactors.categories
         );
 
         if (llmResult.category !== 'uncategorized') {
           // LLM succeeded
           const category = emissionFactors.categories[llmResult.category];
-          const subcategory = findBestSubcategory(transaction.merchantCleaned, category);
+          const subcategory = findBestSubcategory(merchantName, category);
 
           result = {
             category: llmResult.category,
@@ -321,7 +343,7 @@ export const categorizeAllTransactions = async (
           llmSuccessCount++;
         } else {
           // LLM returned uncategorized, try keywords
-          result = categorizeMerchantWithKeywords(transaction.merchantCleaned, emissionFactors);
+          result = categorizeMerchantWithKeywords(merchantName, emissionFactors);
           if (result.category !== 'uncategorized') {
             keywordCount++;
           } else {
@@ -344,7 +366,7 @@ export const categorizeAllTransactions = async (
         }
         
         // LLM failed, use keyword fallback
-        result = categorizeMerchantWithKeywords(transaction.merchantCleaned, emissionFactors);
+        result = categorizeMerchantWithKeywords(merchantName, emissionFactors);
         if (result.category !== 'uncategorized') {
           keywordCount++;
         } else {
@@ -352,8 +374,8 @@ export const categorizeAllTransactions = async (
         }
       }
     } else {
-      // Use keyword matching only
-      result = categorizeMerchantWithKeywords(transaction.merchantCleaned, emissionFactors);
+      // Use keyword matching only (when useLLM is false or CORS was detected)
+      result = categorizeMerchantWithKeywords(merchantName, emissionFactors);
       if (result.category !== 'uncategorized') {
         keywordCount++;
       } else {
@@ -371,9 +393,12 @@ export const categorizeAllTransactions = async (
       method: result.method
     });
 
-    // Progress logging every 10 transactions
+    // Progress logging and callback every 10 transactions
     if ((i + 1) % 10 === 0) {
       console.log(`   Processed ${i + 1}/${transactions.length} transactions...`);
+      if (options.onProgress) {
+        options.onProgress(i + 1, transactions.length);
+      }
     }
   }
 
@@ -388,6 +413,11 @@ export const categorizeAllTransactions = async (
   
   const accuracy = ((llmSuccessCount + keywordCount) / transactions.length * 100).toFixed(1);
   console.log(`   Overall accuracy: ${accuracy}%`);
+
+  // Call progress callback at the end
+  if (options.onProgress) {
+    options.onProgress(transactions.length, transactions.length);
+  }
 
   return categorized;
 };

@@ -1,15 +1,16 @@
 import React from 'react';
-import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 // Colors for different categories
 const COLORS = {
-  'food': '#FF6B6B',      // Red
-  'transport': '#4ECDC4', // Teal
-  'shopping': '#45B7D1',  // Blue
-  'utilities': '#FFA07A', // Orange
-  'entertainment': '#98D8C8', // Mint
-  'travel': '#FFD93D',    // Yellow
-  'uncategorized': '#4B5563' // Darker grey with better contrast (WCAG AA compliant)
+  'food_dining': '#FF8C42',    // Orange-red (warm, appetizing)
+  'food': '#FF8C42',           // Alias for food_dining (backward compatibility)
+  'transport': '#4ECDC4',      // Teal
+  'shopping': '#45B7D1',       // Blue
+  'utilities': '#FFA07A',      // Light orange
+  'entertainment': '#98D8C8',   // Mint
+  'travel': '#FFD93D',         // Yellow
+  'uncategorized': '#9CA3AF'    // Medium grey (softer than before)
 };
 
 const CategoryPieChart = ({ data }) => {
@@ -21,6 +22,7 @@ const CategoryPieChart = ({ data }) => {
       const categoryDetail = data.byCategoryDetailed[categoryKey];
       return {
         name: categoryDetail.name,
+        label: `${categoryDetail.icon} ${categoryDetail.name}`, // For Y-axis display
         value: Math.round(emissions),
         icon: categoryDetail.icon,
         categoryKey: categoryKey,
@@ -114,28 +116,50 @@ const CategoryPieChart = ({ data }) => {
         </PieChart>
       </ResponsiveContainer>
 
-      {/* Category breakdown list */}
+      {/* Category breakdown - Vertical Bar Chart */}
       <div className="category-breakdown">
         <h4>Detailed Breakdown</h4>
-        {chartData.map((category, index) => (
-          <div key={index} className="category-item">
-            <div className="category-header">
-              <span className="category-icon">{category.icon}</span>
-              <span className="category-name">{category.name}</span>
-              <span className="category-percentage">{category.percentage}%</span>
-            </div>
-            <div className="category-bar-container">
-              <div 
-                className="category-bar" 
-                style={{ 
-                  width: `${category.percentage}%`,
-                  backgroundColor: COLORS[category.categoryKey] || COLORS['uncategorized']
-                }}
-              ></div>
-            </div>
-            <div className="category-value">{category.value} kg CO₂e</div>
-          </div>
-        ))}
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart
+            data={chartData}
+            layout="vertical"
+            margin={{ top: 5, right: 30, left: 100, bottom: 20 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+            <XAxis 
+              type="number" 
+              label={{ value: 'kg CO₂e', position: 'insideBottom', offset: -5, style: { textAnchor: 'middle' } }}
+            />
+            <YAxis 
+              type="category" 
+              dataKey="label"
+              width={130}
+              tick={{ fontSize: 12, fill: '#1a1a1a' }}
+            />
+            <Tooltip 
+              formatter={(value, name, props) => [
+                `${value} kg CO₂e (${props.payload.percentage}%)`,
+                props.payload.icon + ' ' + props.payload.name
+              ]}
+              contentStyle={{ 
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                border: '1px solid #ccc',
+                borderRadius: '4px'
+              }}
+            />
+            <Bar 
+              dataKey="value" 
+              radius={[0, 4, 4, 0]}
+            >
+              {chartData.map((entry, index) => (
+                <Cell 
+                  key={`bar-cell-${index}`} 
+                  fill={COLORS[entry.categoryKey] || COLORS['uncategorized']} 
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
