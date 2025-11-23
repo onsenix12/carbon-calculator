@@ -87,15 +87,15 @@ const CategoryPieChart = ({ data }) => {
     <div className="pie-chart-section">
       <h3>Emissions by Category</h3>
       
-      <ResponsiveContainer width="100%" height={CHART_CONFIG.PIE_CHART_HEIGHT + 60}>
-        <PieChart margin={{ top: 20, right: 20, bottom: 100, left: 20 }}>
+      <ResponsiveContainer width="100%" height={CHART_CONFIG.PIE_CHART_HEIGHT + 80}>
+        <PieChart margin={{ top: 30, right: 30, bottom: 120, left: 30 }}>
           <Pie
             data={chartData}
             cx="50%"
-            cy="45%"
+            cy="42%"
             labelLine={false}
             label={renderCustomLabel}
-            outerRadius={140}
+            outerRadius={130}
             fill="#8884d8"
             dataKey="value"
           >
@@ -110,20 +110,20 @@ const CategoryPieChart = ({ data }) => {
           <Legend 
             verticalAlign="bottom" 
             align="center"
-            height={100}
+            height={120}
             layout="horizontal"
             formatter={(value, entry) => `${entry.payload.icon} ${value}`}
             wrapperStyle={{ 
               color: '#1a1a1a', 
               fontSize: '14px', 
               fontWeight: '500',
-              paddingTop: '20px',
-              lineHeight: '1.8',
+              paddingTop: '30px',
+              lineHeight: '2',
               width: '100%'
             }}
             iconType="square"
             iconSize={14}
-            margin={{ top: 20, bottom: 10 }}
+            margin={{ top: 30, bottom: 20 }}
           />
         </PieChart>
       </ResponsiveContainer>
@@ -153,10 +153,13 @@ const CategoryPieChart = ({ data }) => {
               axisLine={{ stroke: '#d1d5db', strokeWidth: 1 }}
             />
             <Tooltip 
-              formatter={(value, name, props) => [
-                `${value} kg CO₂e (${props.payload.percentage}%)`,
-                props.payload.icon + ' ' + props.payload.name
-              ]}
+              formatter={(value, name, props) => `${value} kg CO₂e (${props.payload.percentage}%)`}
+              labelFormatter={(label, payload) => {
+                if (payload && payload.length > 0) {
+                  return `${payload[0].payload.icon} ${payload[0].payload.name}`;
+                }
+                return label;
+              }}
               contentStyle={{ 
                 backgroundColor: 'rgba(255, 255, 255, 0.98)',
                 border: '2px solid #667eea',

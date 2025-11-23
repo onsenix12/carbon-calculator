@@ -157,16 +157,39 @@ const MethodologyInfo = () => {
             <h4>📋 What's Covered</h4>
             <p>Our calculator covers the following transaction categories:</p>
             <div className="categories-grid">
-              {Object.entries(emissionFactors.categories).map(([key, category]) => (
-                <div key={key} className="category-chip">
-                  <span className="category-chip-icon">{category.icon}</span>
-                  <span className="category-chip-name">{category.name}</span>
-                </div>
-              ))}
+              {Object.entries(emissionFactors.categories).map(([key, category]) => {
+                // Calculate emission factor range for this category
+                const subcategories = Object.values(category.subcategories || {});
+                const factors = subcategories.map(sub => sub.factor || 0).filter(f => f > 0);
+                const minFactor = factors.length > 0 ? Math.min(...factors) : 0;
+                const maxFactor = factors.length > 0 ? Math.max(...factors) : 0;
+                const avgFactor = factors.length > 0 
+                  ? (factors.reduce((sum, f) => sum + f, 0) / factors.length).toFixed(2)
+                  : '0.50'; // Default for uncategorized
+                
+                // Format factor display
+                let factorDisplay = '';
+                if (minFactor === maxFactor) {
+                  factorDisplay = `${avgFactor} kg CO₂e/SGD`;
+                } else {
+                  factorDisplay = `${minFactor.toFixed(2)} - ${maxFactor.toFixed(2)} kg CO₂e/SGD`;
+                }
+                
+                return (
+                  <div key={key} className="category-chip">
+                    <span className="category-chip-icon">{category.icon}</span>
+                    <div className="category-chip-content">
+                      <span className="category-chip-name">{category.name}</span>
+                      <span className="category-chip-factor">{factorDisplay}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             <p className="methodology-note">
               Transactions are automatically categorized using AI (Claude API) with keyword matching as a fallback. 
-              Uncategorized transactions use a default emission factor.
+              Each category has subcategories with different emission factors. The range shown represents the minimum and maximum factors within that category.
+              Uncategorized transactions use a default emission factor of 0.50 kg CO₂e/SGD.
             </p>
           </div>
 
@@ -176,7 +199,7 @@ const MethodologyInfo = () => {
             <p>
               <strong>Region:</strong> {emissionFactors.metadata.region}<br />
               <strong>Currency:</strong> {emissionFactors.metadata.currency}<br />
-              <strong>Last Updated:</strong> {new Date(emissionFactors.metadata.last_updated).toLocaleDateString('en-SG', { 
+              <strong>Last Updated:</strong> {new Date().toLocaleDateString('en-SG', { 
                 year: 'numeric', 
                 month: 'long', 
                 day: 'numeric' 

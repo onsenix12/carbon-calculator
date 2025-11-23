@@ -549,6 +549,13 @@
     margin-top: 16px;
   }
 
+  .category-chip-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 4px;
+  }
+
   .category-chip {
     display: flex;
     align-items: center;
@@ -574,6 +581,13 @@
   .category-chip-name {
     color: #1a1a1a;
     font-weight: 500;
+  }
+
+  .category-chip-factor {
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 400;
+    font-family: 'SF Mono', 'Monaco', 'Courier New', monospace;
   }
 
   @media (max-width: 768px) {
@@ -1070,13 +1084,14 @@
   /* Pie Chart Section */
   .pie-chart-section {
     margin-top: 0;
+    padding: 20px 0;
   }
   
   .pie-chart-section h3 {
     font-size: 24px;
     font-weight: 700;
     color: #1a1a1a;
-    margin-bottom: 32px;
+    margin-bottom: 40px;
     text-align: center;
   }
 
