@@ -34,9 +34,21 @@ jobs:
           npm install --legacy-peer-deps
           npm dedupe
         
+      - name: Verify secrets
+        run: |
+          if [ -z "${{ secrets.REACT_APP_PROXY_URL }}" ]; then
+            echo "❌ ERROR: REACT_APP_PROXY_URL secret is not set!"
+            echo "Please add it in GitHub Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+          echo "✅ REACT_APP_PROXY_URL secret is set"
+          echo "Proxy URL: ${{ secrets.REACT_APP_PROXY_URL }}"
+      
       - name: Build project
         env:
           REACT_APP_CLAUDE_API_KEY: ${{ secrets.REACT_APP_CLAUDE_API_KEY }}
+          REACT_APP_USE_PROXY: 'true'
+          REACT_APP_PROXY_URL: ${{ secrets.REACT_APP_PROXY_URL }}
         run: npm run build
 
       - name: Setup Pages
