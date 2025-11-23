@@ -64,7 +64,7 @@ const CLAUDE_API_CONFIG = {
   anthropic_version: '2023-06-01'
 };
 
-// Export for CommonJS (serverless functions)
+// Export for CommonJS (for proxy-server.js and other Node.js scripts)
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     buildClaudePrompt,
@@ -73,15 +73,10 @@ if (typeof module !== 'undefined' && module.exports) {
   };
 }
 
-// Export for ES modules
-if (typeof window === 'undefined') {
-  // Node.js environment
-  try {
-    exports.buildClaudePrompt = buildClaudePrompt;
-    exports.CLAUDE_MODEL = CLAUDE_MODEL;
-    exports.CLAUDE_API_CONFIG = CLAUDE_API_CONFIG;
-  } catch (e) {
-    // Already exported via module.exports
-  }
-}
+// Export for ES modules (for Vercel serverless functions)
+export {
+  buildClaudePrompt,
+  CLAUDE_MODEL,
+  CLAUDE_API_CONFIG
+};
 

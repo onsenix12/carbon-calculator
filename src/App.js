@@ -141,7 +141,8 @@ function App() {
       };
     }
 
-import { isMonthMatch } from './utils/dateUtils';
+    // Filter transactions by selected month
+    const filtered = allTransactions.filter(tx => isMonthMatch(tx.date, selectedMonth));
 
     // Recalculate results for filtered transactions
     if (filtered.length === 0) {

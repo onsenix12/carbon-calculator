@@ -10,6 +10,8 @@
  * 3. Update REACT_APP_PROXY_URL in GitHub Actions to your Vercel URL
  */
 
+import { buildClaudePrompt, CLAUDE_API_CONFIG } from '../shared/constants.js';
+
 export default async function handler(req, res) {
   // Enable CORS for all origins (since we're a proxy)
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -36,9 +38,6 @@ export default async function handler(req, res) {
   if (!apiKey) {
     return res.status(500).json({ error: 'CLAUDE_API_KEY not configured' });
   }
-
-  // Import shared constants
-  const { buildClaudePrompt, CLAUDE_API_CONFIG } = require('../shared/constants');
 
   // Build category list for prompt
   const categoryList = Object.keys(categories || {})
