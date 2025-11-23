@@ -426,9 +426,11 @@ export const estimateAPICost = (transactionCount) => {
 };
 
 // Export functions
-export default {
+const llmCategorizer = {
   categorizeMerchantWithLLM,
   categorizeMerchantWithKeywords,
   categorizeAllTransactions,
   estimateAPICost
 };
+
+export default llmCategorizer;

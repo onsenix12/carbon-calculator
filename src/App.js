@@ -13,7 +13,6 @@ import emissionFactors from './data/emissionFactors.json';
 
 function App() {
   const [step, setStep] = useState('upload'); // 'upload', 'processing', 'results'
-  const [pdfFile, setPdfFile] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [results, setResults] = useState(null);
   const [dbsTotal, setDbsTotal] = useState(null); // DBS LiveBetter comparison value
@@ -22,7 +21,6 @@ function App() {
 
   const handleFileSelect = async (file) => {
     setError(null);
-    setPdfFile(file);
     setStep('processing');
     setLoading(true);
 
@@ -31,7 +29,7 @@ function App() {
       
       // Step 1: Parse PDF and extract transaction section
       console.log('Step 1: Parsing PDF...');
-      const { transactionText, metadata } = await parsePDF(file);
+      const { transactionText } = await parsePDF(file);
       
       // Step 2: Parse individual transactions
       console.log('Step 2: Parsing transactions...');
@@ -82,7 +80,6 @@ function App() {
 
   const handleReset = () => {
     setStep('upload');
-    setPdfFile(null);
     setTransactions([]);
     setResults(null);
     setDbsTotal(null);

@@ -384,7 +384,7 @@ export const calculateFootprint = (categorizedTransactions, emissionFactors) => 
   };
   
   // Export all functions
-  export default {
+  const emissionCalculator = {
     calculateFootprint,
     compareWithDBS,
     getTopEmissionSources,
@@ -393,3 +393,5 @@ export const calculateFootprint = (categorizedTransactions, emissionFactors) => 
     generateRecommendations,
     compareWithSingaporeAverage
   };
+  
+  export default emissionCalculator;

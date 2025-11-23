@@ -107,16 +107,13 @@ export const extractTransactionSection = (fullText) => {
   ];
 
   let startIndex = -1;
-  let startMarker = null;
   let endIndex = -1;
-  let endMarker = null;
 
   // Find start marker
   for (const marker of startMarkers) {
     const index = fullText.indexOf(marker);
     if (index !== -1) {
       startIndex = index;
-      startMarker = marker;
       console.log(`   ✓ Found start marker: "${marker}" at position ${index}`);
       break;
     }
@@ -141,7 +138,6 @@ export const extractTransactionSection = (fullText) => {
     const index = textAfterStart.indexOf(marker);
     if (index !== -1) {
       endIndex = startIndex + index;
-      endMarker = marker;
       console.log(`   ✓ Found end marker: "${marker}" at position ${endIndex}`);
       break;
     }
@@ -152,7 +148,6 @@ export const extractTransactionSection = (fullText) => {
     console.warn('   Tried markers:', endMarkers);
     // Use end of document as fallback
     endIndex = fullText.length;
-    endMarker = 'END_OF_DOCUMENT';
   }
 
   if (endIndex <= startIndex) {
@@ -272,9 +267,11 @@ export const parsePDF = async (file) => {
 };
 
 // Export all functions
-export default {
+const pdfParser = {
   extractTextFromPDF,
   extractTransactionSection,
   validateNoSensitiveData,
   parsePDF
 };
+
+export default pdfParser;

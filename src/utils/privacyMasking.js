@@ -140,7 +140,7 @@ export const maskCreditCardNumbers = (text) => {
   export const extractMerchantNameOnly = (transactionLine) => {
     // Pattern: DD MMM MERCHANT_NAME AMOUNT
     const match = transactionLine.match(
-      /\d{2}\s+[A-Z]{3}\s+([A-Z0-9\s\-\(\)@'&.]+?)\s+[\d,]+\.\d{2}/i
+      /\d{2}\s+[A-Z]{3}\s+([A-Z0-9\s\-()@'&.]+?)\s+[\d,]+\.\d{2}/i
     );
     
     if (!match) {
@@ -189,9 +189,9 @@ export const maskCreditCardNumbers = (text) => {
     removals.forEach(suffix => {
       cleaned = cleaned.replace(new RegExp(`\\s*${suffix}\\s*$`, 'i'), '');
     });
-  
+
     // Remove special characters at the end
-    cleaned = cleaned.replace(/[\-@#]+$/, '');
+    cleaned = cleaned.replace(/[-@#]+$/, '');
   
     // Normalize spaces
     cleaned = cleaned.replace(/\s+/g, ' ').trim();
@@ -304,7 +304,7 @@ export const maskCreditCardNumbers = (text) => {
   };
   
   // Export all functions
-  export default {
+  const privacyMasking = {
     maskCreditCardNumbers,
     maskAccountNumbers,
     maskCustomerIDs,
@@ -317,3 +317,5 @@ export const maskCreditCardNumbers = (text) => {
     maskAllSensitiveData,
     validateTextIsSafe
   };
+
+  export default privacyMasking;

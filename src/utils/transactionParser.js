@@ -24,7 +24,7 @@ export const parseDBSTransactions = (transactionText) => {
   console.log('   Input length:', transactionText.length, 'characters');
 
   // Step 1: Mask sensitive data FIRST
-  const { maskedText, maskingReport } = maskAllSensitiveData(transactionText);
+  const { maskedText } = maskAllSensitiveData(transactionText);
 
   // Step 2: Validate masking worked
   const validation = validateTextIsSafe(maskedText);
@@ -445,7 +445,7 @@ const parseSingleTransaction = (lines, startIdx) => {
   //          "U. S. DOLLAR 7.50"
   //          "9.87"
   const simpleHeaderMatch = line.match(
-    /^(\d{2}\s+[A-Z]{3})\s+([A-Z0-9\s\-\(\)@'&.!]+?)$/
+    /^(\d{2}\s+[A-Z]{3})\s+([A-Z0-9\s\-()@'&.!]+?)$/
   );
 
   if (simpleHeaderMatch && startIdx + 1 < lines.length) {
@@ -600,9 +600,11 @@ export const getTransactionStatistics = (transactions) => {
 };
 
 // Export all functions
-export default {
+const transactionParser = {
   parseDBSTransactions,
   validateParsedTransactions,
   groupTransactionsByMonth,
   getTransactionStatistics
 };
+
+export default transactionParser;
