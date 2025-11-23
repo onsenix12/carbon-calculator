@@ -87,12 +87,12 @@ const CategoryPieChart = ({ data }) => {
     <div className="pie-chart-section">
       <h3>Emissions by Category</h3>
       
-      <ResponsiveContainer width="100%" height={CHART_CONFIG.PIE_CHART_HEIGHT + 80}>
-        <PieChart margin={{ top: 30, right: 30, bottom: 120, left: 30 }}>
+      <ResponsiveContainer width="100%" height={CHART_CONFIG.PIE_CHART_HEIGHT + 40}>
+        <PieChart margin={{ top: 50, right: 30, bottom: 80, left: 30 }}>
           <Pie
             data={chartData}
             cx="50%"
-            cy="42%"
+            cy="45%"
             labelLine={false}
             label={renderCustomLabel}
             outerRadius={130}
@@ -110,20 +110,20 @@ const CategoryPieChart = ({ data }) => {
           <Legend 
             verticalAlign="bottom" 
             align="center"
-            height={120}
+            height={80}
             layout="horizontal"
             formatter={(value, entry) => `${entry.payload.icon} ${value}`}
             wrapperStyle={{ 
               color: '#1a1a1a', 
               fontSize: '14px', 
               fontWeight: '500',
-              paddingTop: '30px',
+              paddingTop: '10px',
               lineHeight: '2',
               width: '100%'
             }}
             iconType="square"
             iconSize={14}
-            margin={{ top: 30, bottom: 20 }}
+            margin={{ top: 10, bottom: 0 }}
           />
         </PieChart>
       </ResponsiveContainer>
