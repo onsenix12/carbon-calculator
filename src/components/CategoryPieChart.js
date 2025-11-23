@@ -12,7 +12,7 @@ const COLORS = {
 };
 
 const CategoryPieChart = ({ data }) => {
-  if (!data || !data.byCategoryDetailed) return null;
+  if (!data || !data.byCategory || !data.byCategoryDetailed) return null;
 
   // Transform data for Recharts
   const chartData = Object.entries(data.byCategory)

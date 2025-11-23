@@ -13,12 +13,14 @@ const ResultsSummary = ({ results }) => {
           <p className="emissions-label">Total Carbon Emissions</p>
         </div>
         
-        <div className="date-range">
-          <span className="date-icon">📅</span>
-          <span className="dates">
-            {results.metadata.dateRange.start} - {results.metadata.dateRange.end}
-          </span>
-        </div>
+        {results.metadata.dateRange && (
+          <div className="date-range">
+            <span className="date-icon">📅</span>
+            <span className="dates">
+              {results.metadata.dateRange.start} - {results.metadata.dateRange.end}
+            </span>
+          </div>
+        )}
         
         <div className="transaction-count">
           <span className="count-icon">💳</span>
