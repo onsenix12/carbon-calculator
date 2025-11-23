@@ -9,8 +9,20 @@
  * Cost: ~$0.0003 per transaction (100 transactions = ~$0.03)
  */
 
-const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
+// Use proxy server in development, direct API in production
+// Set REACT_APP_USE_PROXY=true in .env to use local proxy server
+const USE_PROXY = process.env.REACT_APP_USE_PROXY === 'true';
+const PROXY_URL = process.env.REACT_APP_PROXY_URL || 'http://localhost:3001/api/categorize';
+const CLAUDE_API_URL = USE_PROXY ? PROXY_URL : 'https://api.anthropic.com/v1/messages';
 const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
+
+// Debug logging
+console.log('🔧 LLM Configuration:', {
+  USE_PROXY,
+  PROXY_URL,
+  CLAUDE_API_URL,
+  envValue: process.env.REACT_APP_USE_PROXY
+});
 
 /**
  * Get API key from environment
@@ -40,6 +52,41 @@ const getAPIKey = () => {
  * @returns {Promise<Object>} - { category, subcategory, confidence }
  */
 export const categorizeMerchantWithLLM = async (merchantName, categories) => {
+  // If using proxy, send simplified request
+  if (USE_PROXY) {
+    try {
+      const response = await fetch(CLAUDE_API_URL, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          merchantName,
+          categories
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          `Proxy error (${response.status}): ${errorData.error || response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+      return {
+        category: data.category,
+        confidence: data.confidence || 'high',
+        method: data.method || 'llm',
+        rawResponse: data.rawResponse
+      };
+    } catch (error) {
+      console.error('LLM categorization failed for:', merchantName, error);
+      throw error;
+    }
+  }
+
+  // Direct API call (for production with proper CORS setup)
   const apiKey = getAPIKey();
   
   // Build category list for prompt
@@ -58,7 +105,7 @@ If uncertain, return "uncategorized".
 
 Rules:
 - food_dining: Restaurants, cafes, food courts, hawkers, food delivery
-- transport: Grab, taxis, MRT, buses, petrol stations, ride-hailing
+- transport: Grab, taxis, MRT, buses, petrol stations, ride-hailing, public transport
 - utilities: Electricity, water, gas bills
 - shopping: Retail stores, supermarkets, clothing, electronics
 - entertainment: Netflix, Spotify, gyms, cinemas, games
@@ -66,6 +113,8 @@ Rules:
 
 Examples:
 - "GRAB" → transport
+- "PUBLIC TRANSPORT" → transport
+- "BUS/MRT" → transport
 - "KOUFU" → food_dining
 - "NTUC FAIRPRICE" → shopping
 - "SP SERVICES" → utilities
@@ -120,6 +169,18 @@ Response (one word only):`;
     }
 
   } catch (error) {
+    // Check if this is a CORS error
+    const isCorsError = error.message.includes('CORS') || 
+                       error.message.includes('Failed to fetch') ||
+                       error.message.includes('NetworkError') ||
+                       error.name === 'TypeError';
+    
+    if (isCorsError) {
+      console.warn('⚠️ CORS error detected - LLM API cannot be accessed from browser. Using keyword matching instead.');
+      // Return a special flag to indicate CORS error
+      throw new Error('CORS_BLOCKED');
+    }
+    
     console.error('LLM categorization failed for:', merchantName, error);
     
     // Fallback to keyword matching if LLM fails
@@ -222,6 +283,8 @@ export const categorizeAllTransactions = async (
 
   // Check if LLM is available
   let useLLM = options.useLLM;
+  let corsDetected = false;
+  
   try {
     getAPIKey();
   } catch (error) {
@@ -233,7 +296,8 @@ export const categorizeAllTransactions = async (
     const transaction = transactions[i];
     let result;
 
-    if (useLLM) {
+    // If CORS was detected, skip LLM for all remaining transactions
+    if (useLLM && !corsDetected) {
       try {
         // Try LLM categorization
         const llmResult = await categorizeMerchantWithLLM(
@@ -271,6 +335,14 @@ export const categorizeAllTransactions = async (
         }
 
       } catch (error) {
+        // Check if this is a CORS error
+        if (error.message === 'CORS_BLOCKED') {
+          corsDetected = true;
+          console.warn('⚠️  CORS error detected - Anthropic API cannot be accessed directly from browser.');
+          console.warn('   Switching to keyword matching for all remaining transactions.');
+          console.warn('   Note: To use LLM categorization, you need a backend proxy server.');
+        }
+        
         // LLM failed, use keyword fallback
         result = categorizeMerchantWithKeywords(transaction.merchantCleaned, emissionFactors);
         if (result.category !== 'uncategorized') {
@@ -306,6 +378,10 @@ export const categorizeAllTransactions = async (
   }
 
   console.log('✅ Categorization complete');
+  if (corsDetected) {
+    console.log('   ⚠️  Note: CORS blocked LLM API access - used keyword matching only');
+    console.log('   To use LLM categorization, set up a backend proxy server');
+  }
   console.log(`   LLM successes: ${llmSuccessCount}`);
   console.log(`   Keyword matches: ${keywordCount}`);
   console.log(`   Uncategorized: ${uncategorizedCount}`);

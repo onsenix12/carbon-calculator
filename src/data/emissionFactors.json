@@ -139,8 +139,8 @@
           "unit": "kg CO2e/SGD",
           "source": "Estimated from SEFR",
           "confidence": "high",
-          "keywords": ["ez-link", "ezlink", "simplygo", "transitlink", "smrt", "sbst", "mrt", "lrt", "bus"],
-          "examples": ["MRT", "Bus", "EZ-Link top-ups"],
+          "keywords": ["ez-link", "ezlink", "simplygo", "transitlink", "smrt", "sbst", "mrt", "lrt", "bus", "public transport", "public transit"],
+          "examples": ["MRT", "Bus", "EZ-Link top-ups", "BUS/MRT"],
           "rationale": "Average trip ~SGD 2, ~10km → 0.01 kg CO2/pax-km (SEFR Train) → 0.10 kg / 2 SGD = 0.05 kg/SGD",
           "sefr_reference": {
             "train": {

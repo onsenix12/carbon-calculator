@@ -85,26 +85,74 @@ export const extractTextFromPDF = async (file) => {
  */
 export const extractTransactionSection = (fullText) => {
   console.log('🔍 Extracting transaction section...');
+  console.log('   Full text length:', fullText.length, 'characters');
+  console.log('   First 500 chars:', fullText.substring(0, 500));
 
-  // Find markers
-  const startMarker = 'NEW TRANSACTIONS';
-  const endMarker = 'SUB-TOTAL';
+  // Try multiple possible start markers (DBS statements may vary)
+  const startMarkers = [
+    'NEW TRANSACTIONS',
+    'NEW TRANSACTION',
+    'TRANSACTIONS',
+    'TRANSACTION DETAILS',
+    'PURCHASES'
+  ];
+  
+  // Try multiple possible end markers
+  const endMarkers = [
+    'SUB-TOTAL',
+    'SUBTOTAL',
+    'SUB TOTAL',
+    'TOTAL',
+    'SUMMARY'
+  ];
 
-  const startIndex = fullText.indexOf(startMarker);
-  const endIndex = fullText.indexOf(endMarker);
+  let startIndex = -1;
+  let startMarker = null;
+  let endIndex = -1;
+  let endMarker = null;
+
+  // Find start marker
+  for (const marker of startMarkers) {
+    const index = fullText.indexOf(marker);
+    if (index !== -1) {
+      startIndex = index;
+      startMarker = marker;
+      console.log(`   ✓ Found start marker: "${marker}" at position ${index}`);
+      break;
+    }
+  }
 
   if (startIndex === -1) {
+    console.error('   ❌ Could not find any start marker. Tried:', startMarkers);
+    console.error('   Sample text around potential locations:');
+    // Show text around common locations
+    const sampleStart = fullText.substring(0, Math.min(2000, fullText.length));
+    console.error('   First 2000 chars:', sampleStart);
     throw new Error(
       'Could not find transaction section. ' +
-      'This might not be a DBS credit card statement, or the format has changed.'
+      'This might not be a DBS credit card statement, or the format has changed. ' +
+      'Check the browser console (F12) for more details.'
     );
   }
 
+  // Find end marker (search after start marker)
+  const textAfterStart = fullText.substring(startIndex);
+  for (const marker of endMarkers) {
+    const index = textAfterStart.indexOf(marker);
+    if (index !== -1) {
+      endIndex = startIndex + index;
+      endMarker = marker;
+      console.log(`   ✓ Found end marker: "${marker}" at position ${endIndex}`);
+      break;
+    }
+  }
+
   if (endIndex === -1) {
-    throw new Error(
-      'Could not find end of transactions (SUB-TOTAL marker missing). ' +
-      'The statement might be incomplete.'
-    );
+    console.warn('   ⚠️ Could not find end marker. Will use end of document.');
+    console.warn('   Tried markers:', endMarkers);
+    // Use end of document as fallback
+    endIndex = fullText.length;
+    endMarker = 'END_OF_DOCUMENT';
   }
 
   if (endIndex <= startIndex) {

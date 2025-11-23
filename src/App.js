@@ -35,10 +35,21 @@ function App() {
       
       // Step 2: Parse individual transactions
       console.log('Step 2: Parsing transactions...');
+      console.log('Transaction text sample (first 500 chars):', transactionText.substring(0, 500));
       const parsedTransactions = parseDBSTransactions(transactionText);
       
       if (parsedTransactions.length === 0) {
-        throw new Error('No transactions found in the PDF. Please check that this is a valid DBS credit card statement.');
+        // Provide more helpful error message with debugging info
+        console.error('❌ No transactions found. Debug info:');
+        console.error('   Transaction text length:', transactionText.length);
+        console.error('   First 1000 characters:', transactionText.substring(0, 1000));
+        console.error('   Looking for patterns like: "DD MMM MERCHANT AMOUNT"');
+        
+        throw new Error(
+          'No transactions found in the PDF. ' +
+          'Please check that this is a valid DBS credit card statement. ' +
+          'Check the browser console (F12) for more details about what was extracted.'
+        );
       }
       
       // Step 3: Categorize transactions using LLM (with keyword fallback)
@@ -55,7 +66,8 @@ function App() {
       
       // Step 5: Set results and show
       console.log('✅ Processing complete!');
-      setTransactions(categorizedTransactions);
+      // Use transactions from results (they have emissions and factor calculated)
+      setTransactions(calculatedResults.transactions);
       setResults(calculatedResults);
       setStep('results');
       
@@ -141,7 +153,7 @@ function App() {
                   <span className="step-text">Calculating emissions</span>
                 </div>
               </div>
-              <p style={{ textAlign: 'center', marginTop: '20px', color: '#666' }}>
+              <p className="processing-message">
                 This may take a moment...
               </p>
             </div>
@@ -185,10 +197,10 @@ function App() {
             Built for IS626: Digital Technologies & Sustainability<br />
             Singapore Management University | Master of IT in Business
           </p>
-          <p style={{ marginTop: '8px', fontSize: '14px', opacity: 0.8 }}>
+          <p className="footer-data-sources">
             Data sources: SEFR Singapore, UK DEFRA 2024, EMA Singapore
           </p>
-          <p style={{ marginTop: '4px', fontSize: '12px', opacity: 0.6 }}>
+          <p className="footer-disclaimer">
             Emission factors are estimates. Actual carbon footprint may vary.
           </p>
         </div>

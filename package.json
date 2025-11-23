@@ -6,41 +6,45 @@
     "description": "Personal Carbon Footprint Calculator - IS626 SMU Assignment",
     "author": "Avisenna Gusta",
     "dependencies": {
-      "react": "^18.2.0",
-      "react-dom": "^18.2.0",
-      "react-scripts": "5.0.1",
-      "pdfjs-dist": "^3.11.174",
-      "recharts": "^2.10.3"
+        "cors": "^2.8.5",
+        "dotenv": "^17.2.3",
+        "express": "^5.1.0",
+        "pdfjs-dist": "^3.11.174",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "react-scripts": "5.0.1",
+        "recharts": "^2.10.3"
     },
     "scripts": {
-      "start": "react-scripts start",
-      "build": "react-scripts build",
-      "test": "react-scripts test",
-      "eject": "react-scripts eject"
+        "start": "react-scripts start",
+        "build": "react-scripts build",
+        "test": "react-scripts test",
+        "eject": "react-scripts eject",
+        "proxy": "node proxy-server.js"
     },
     "eslintConfig": {
-      "extends": [
-        "react-app"
-      ]
+        "extends": [
+            "react-app"
+        ]
     },
     "browserslist": {
-      "production": [
-        ">0.2%",
-        "not dead",
-        "not op_mini all"
-      ],
-      "development": [
-        "last 1 chrome version",
-        "last 1 firefox version",
-        "last 1 safari version"
-      ]
+        "production": [
+            ">0.2%",
+            "not dead",
+            "not op_mini all"
+        ],
+        "development": [
+            "last 1 chrome version",
+            "last 1 firefox version",
+            "last 1 safari version"
+        ]
     },
     "overrides": {
-      "fork-ts-checker-webpack-plugin": {
-        "schema-utils": {
-          "ajv": "^6.12.6",
-          "ajv-keywords": "^3.5.2"
+        "fork-ts-checker-webpack-plugin": {
+            "schema-utils": {
+                "ajv": "^6.12.6",
+                "ajv-keywords": "^3.5.2"
+            }
         }
-      }
     }
-  }
+}

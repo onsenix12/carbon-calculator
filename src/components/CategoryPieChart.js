@@ -8,7 +8,8 @@ const COLORS = {
   'shopping': '#45B7D1',  // Blue
   'utilities': '#FFA07A', // Orange
   'entertainment': '#98D8C8', // Mint
-  'travel': '#FFD93D'     // Yellow
+  'travel': '#FFD93D',    // Yellow
+  'uncategorized': '#4B5563' // Darker grey with better contrast (WCAG AA compliant)
 };
 
 const CategoryPieChart = ({ data }) => {
@@ -30,7 +31,8 @@ const CategoryPieChart = ({ data }) => {
     .sort((a, b) => b.value - a.value);  // Sort by highest emissions first
 
   // Custom label renderer
-  const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percentage }) => {
+  const renderCustomLabel = (entry) => {
+    const { cx, cy, midAngle, innerRadius, outerRadius, percentage } = entry;
     const RADIAN = Math.PI / 180;
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
@@ -39,15 +41,24 @@ const CategoryPieChart = ({ data }) => {
     // Only show label if percentage is significant (>5%)
     if (parseFloat(percentage) < 5) return null;
 
+    // Get category key from the data - Recharts passes the data point
+    const dataPoint = entry.payload || entry;
+    const isUncategorized = dataPoint?.categoryKey === 'uncategorized';
+
     return (
       <text 
         x={x} 
         y={y} 
-        fill="white" 
+        fill="#FFFFFF" 
         textAnchor={x > cx ? 'start' : 'end'} 
         dominantBaseline="central"
         fontSize="14"
         fontWeight="bold"
+        style={{
+          textShadow: isUncategorized 
+            ? '2px 2px 4px rgba(0, 0, 0, 0.9), -1px -1px 2px rgba(0, 0, 0, 0.9), 0 0 4px rgba(0, 0, 0, 0.8)' 
+            : '1px 1px 2px rgba(0, 0, 0, 0.6)'
+        }}
       >
         {`${percentage}%`}
       </text>
@@ -88,7 +99,7 @@ const CategoryPieChart = ({ data }) => {
             {chartData.map((entry, index) => (
               <Cell 
                 key={`cell-${index}`} 
-                fill={COLORS[entry.categoryKey] || '#999999'} 
+                fill={COLORS[entry.categoryKey] || COLORS['uncategorized']} 
               />
             ))}
           </Pie>
@@ -97,6 +108,8 @@ const CategoryPieChart = ({ data }) => {
             verticalAlign="bottom" 
             height={36}
             formatter={(value, entry) => `${entry.payload.icon} ${value}`}
+            wrapperStyle={{ color: '#1a1a1a', fontSize: '14px', fontWeight: '500' }}
+            iconType="square"
           />
         </PieChart>
       </ResponsiveContainer>
@@ -116,7 +129,7 @@ const CategoryPieChart = ({ data }) => {
                 className="category-bar" 
                 style={{ 
                   width: `${category.percentage}%`,
-                  backgroundColor: COLORS[category.categoryKey] || '#999999'
+                  backgroundColor: COLORS[category.categoryKey] || COLORS['uncategorized']
                 }}
               ></div>
             </div>

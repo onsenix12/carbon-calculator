@@ -13,7 +13,11 @@ const ResultsSummary = ({ results }) => {
           <p className="emissions-label">Total Carbon Emissions</p>
         </div>
         
-        {results.metadata.dateRange && (
+        {results.metadata.dateRange && 
+         results.metadata.dateRange.start && 
+         results.metadata.dateRange.end &&
+         !results.metadata.dateRange.start.includes('Invalid') &&
+         !results.metadata.dateRange.end.includes('Invalid') && (
           <div className="date-range">
             <span className="date-icon">📅</span>
             <span className="dates">

@@ -197,7 +197,8 @@ export const maskCreditCardNumbers = (text) => {
     cleaned = cleaned.replace(/\s+/g, ' ').trim();
   
     // Standardize common patterns
-    cleaned = cleaned.replace(/BUS\/MRT/g, 'PUBLIC TRANSPORT');
+    cleaned = cleaned.replace(/BUS\/MRT/gi, 'PUBLIC TRANSPORT');
+    cleaned = cleaned.replace(/BUS\s+MRT/gi, 'PUBLIC TRANSPORT');
     cleaned = cleaned.replace(/HELLORIDE_SG/g, 'HELLORIDE');
     
     return cleaned;

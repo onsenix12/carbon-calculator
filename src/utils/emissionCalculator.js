@@ -107,22 +107,81 @@ export const calculateFootprint = (categorizedTransactions, emissionFactors) => 
   
     // Calculate date range
     if (results.transactions.length > 0) {
-      const dates = results.transactions.map(t => {
-        // Parse DD MMM format to Date
-        const [day, month] = t.date.split(' ');
-        const monthMap = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
-                           JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
-        const year = new Date().getFullYear(); // Assume current year
-        return new Date(year, monthMap[month], parseInt(day));
-      });
-  
-      const minDate = new Date(Math.min(...dates));
-      const maxDate = new Date(Math.max(...dates));
-  
-      results.metadata.dateRange = {
-        start: minDate.toLocaleDateString('en-SG', { day: '2-digit', month: 'short', year: 'numeric' }),
-        end: maxDate.toLocaleDateString('en-SG', { day: '2-digit', month: 'short', year: 'numeric' })
-      };
+      const monthMap = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
+                         JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
+      const currentYear = new Date().getFullYear();
+      
+      const validDates = results.transactions
+        .map(t => {
+          try {
+            // Parse DD MMM format to Date
+            const parts = t.date.trim().split(/\s+/);
+            if (parts.length < 2) return null;
+            
+            const day = parseInt(parts[0]);
+            const monthStr = parts[1].toUpperCase();
+            const month = monthMap[monthStr];
+            
+            if (isNaN(day) || day < 1 || day > 31 || month === undefined) {
+              return null;
+            }
+            
+            const date = new Date(currentYear, month, day);
+            
+            // Validate the date is actually valid (handles cases like Feb 30)
+            if (date.getDate() !== day || date.getMonth() !== month) {
+              return null;
+            }
+            
+            return date;
+          } catch (e) {
+            console.warn(`Failed to parse date: ${t.date}`, e);
+            return null;
+          }
+        })
+        .filter(date => date !== null && !isNaN(date.getTime()));
+
+      if (validDates.length > 0) {
+        const minDate = new Date(Math.min(...validDates.map(d => d.getTime())));
+        const maxDate = new Date(Math.max(...validDates.map(d => d.getTime())));
+
+        // Format dates with proper error handling
+        const formatDate = (date) => {
+          try {
+            const formatted = date.toLocaleDateString('en-SG', { 
+              day: '2-digit', 
+              month: 'short', 
+              year: 'numeric' 
+            });
+            // Check if formatting returned "Invalid Date"
+            if (formatted === 'Invalid Date' || formatted.includes('Invalid')) {
+              // Fallback to manual formatting
+              const day = date.getDate().toString().padStart(2, '0');
+              const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                                 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+              const month = monthNames[date.getMonth()];
+              const year = date.getFullYear();
+              return `${day} ${month} ${year}`;
+            }
+            return formatted;
+          } catch (e) {
+            // Fallback formatting
+            const day = date.getDate().toString().padStart(2, '0');
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const month = monthNames[date.getMonth()];
+            const year = date.getFullYear();
+            return `${day} ${month} ${year}`;
+          }
+        };
+
+        results.metadata.dateRange = {
+          start: formatDate(minDate),
+          end: formatDate(maxDate)
+        };
+      } else {
+        console.warn('⚠️ No valid dates found in transactions, dateRange will be null');
+      }
     }
   
     console.log('✅ Calculation complete');

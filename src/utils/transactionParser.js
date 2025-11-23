@@ -35,35 +35,79 @@ export const parseDBSTransactions = (transactionText) => {
     );
   }
 
-  // Step 3: Split into lines
-  const lines = maskedText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  // Step 3: Parse transactions directly from text (handles both line-by-line and single-line formats)
+  // First, try to find all transactions using regex pattern matching
+  // Pattern: DD MMM MERCHANT... AMOUNT (where amount is digits.decimal)
   
-  console.log('   Total lines:', lines.length);
-
+  console.log('   Attempting to parse transactions from text...');
+  
+  // Don't remove headers yet - we'll skip them during parsing
+  let cleanText = maskedText;
+  
+  console.log('   Text sample (first 500 chars):', cleanText.substring(0, 500));
+  
+  // Strategy: Find all date patterns, then extract merchant and amount for each
+  // This is more reliable than trying to match everything at once
+  const datePattern = /(\d{1,2}\s+[A-Z]{3})/g;
+  const allDates = [];
+  let dateMatch;
+  
+  // Reset regex lastIndex
+  datePattern.lastIndex = 0;
+  while ((dateMatch = datePattern.exec(cleanText)) !== null) {
+    allDates.push({
+      date: dateMatch[1],
+      index: dateMatch.index
+    });
+  }
+  
+  console.log(`   Found ${allDates.length} date patterns`);
+  
+  if (allDates.length === 0) {
+    console.warn('   ⚠️ No date patterns found in text!');
+  }
+  
+  // Now for each date, extract the transaction
+  // Pattern: DATE + everything until we find an amount (digits.decimal) + optional CR
+  // Then look for next date or end
+  const transactionPattern = /(\d{1,2}\s+[A-Z]{3})\s+(.+?)\s+([\d,]+\.\d{2})(?:\s+CR)?/;
+  
   const transactions = [];
-  let i = 0;
+  let skippedCount = 0;
+  let failedParseCount = 0;
 
-  while (i < lines.length) {
-    const line = lines[i];
-
-    // Skip header lines
-    if (line.includes('NEW TRANSACTIONS') || 
-        line.includes('AVISENNA GUSTA') ||
-        line.includes('DESCRIPTION') ||
-        line.includes('AMOUNT')) {
-      i++;
+  // Process each date to extract its transaction
+  for (let i = 0; i < allDates.length; i++) {
+    const dateInfo = allDates[i];
+    const nextDateIndex = i + 1 < allDates.length ? allDates[i + 1].index : cleanText.length;
+    
+    // Extract segment from this date to the next date
+    const segment = cleanText.substring(dateInfo.index, nextDateIndex);
+    
+    // Try to match transaction in this segment
+    const match = segment.match(transactionPattern);
+    
+    if (match) {
+      const [, date, merchant, amount] = match;
+    
+      // Log first few matches for debugging
+      if (transactions.length + skippedCount + failedParseCount < 5) {
+        console.log(`   Match: date="${date}", merchant="${merchant.substring(0, 50)}", amount="${amount}"`);
+      }
+      
+      // Skip if it's a credit (refund) - check the segment
+      if (segment.includes(' CR') && segment.indexOf(' CR') < segment.indexOf(amount) + amount.length + 5) {
+        skippedCount++;
+        continue;
+      }
+    
+    // Skip bill payments
+    if (merchant.includes('BILL PAYMENT') || merchant.includes('PAYMENT - DBS')) {
+      skippedCount++;
       continue;
     }
-
-    // Skip bill payments and credits (not purchases)
-    if (line.includes('BILL PAYMENT') || 
-        line.includes('PAYMENT - DBS') ||
-        /\d+\.\d{2}\s+CR$/.test(line)) {
-      i++;
-      continue;
-    }
-
-    // Skip fees and admin charges (not carbon-emitting purchases)
+    
+    // Skip fees and charges
     const skipKeywords = [
       'FREQUENT FLYER',
       'ADMIN FEE',
@@ -73,21 +117,206 @@ export const parseDBSTransactions = (transactionText) => {
       'INSURANCE'
     ];
     
-    if (skipKeywords.some(keyword => line.includes(keyword))) {
-      i++;
+    if (skipKeywords.some(keyword => merchant.includes(keyword))) {
+      skippedCount++;
       continue;
     }
-
-    // Try to parse transaction
-    const transaction = parseSingleTransaction(lines, i);
     
-    if (transaction) {
-      transactions.push(transaction);
-      i += transaction.linesConsumed;
-    } else {
-      // Couldn't parse, skip line
-      i++;
+    // Parse amount (remove commas)
+    const parsedAmount = parseFloat(amount.replace(/,/g, ''));
+    
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      failedParseCount++;
+      if (failedParseCount <= 3) {
+        console.warn(`   ⚠️ Invalid amount: "${amount}" from match: "${match[0].substring(0, 100)}"`);
+      }
+      continue;
     }
+    
+      // Create transaction object
+      transactions.push({
+        date: date.trim(),
+        merchant: merchant.trim(),
+        merchantCleaned: cleanMerchantName(merchant.trim()),
+        amount: parsedAmount,
+        currency: 'SGD',
+        type: 'simple',
+        linesConsumed: 1
+      });
+    } else {
+      // No match found for this date segment
+      failedParseCount++;
+      if (failedParseCount <= 3) {
+        console.warn(`   ⚠️ Could not parse segment starting with "${segment.substring(0, 80)}"`);
+      }
+    }
+  }
+  
+  console.log(`   Valid transactions: ${transactions.length}`);
+  console.log(`   Skipped: ${skippedCount}, Failed: ${failedParseCount}`);
+  
+  // If no matches found, try alternative approach: split by dates
+  if (transactions.length === 0) {
+    console.log('   No regex matches, trying date-split approach...');
+    
+    // Strategy: Split text by date patterns, then parse each segment
+    // Pattern: DD MMM (e.g., "11 OCT", "12 OCT")
+    const datePattern = /(\d{1,2}\s+[A-Z]{3})/g;
+    
+    // Find all date positions
+    const dateMatches = [];
+    let dateMatch;
+    while ((dateMatch = datePattern.exec(cleanText)) !== null) {
+      dateMatches.push({
+        date: dateMatch[1],
+        index: dateMatch.index
+      });
+    }
+    
+    console.log(`   Found ${dateMatches.length} date patterns`);
+    
+    // Parse each segment between dates
+    for (let i = 0; i < dateMatches.length; i++) {
+      const currentDate = dateMatches[i];
+      const nextIndex = i + 1 < dateMatches.length ? dateMatches[i + 1].index : cleanText.length;
+      
+      // Extract the segment for this transaction
+      const segment = cleanText.substring(currentDate.index, nextIndex).trim();
+      
+      // Pattern: DATE MERCHANT... AMOUNT
+      // Match: DATE + merchant name (everything until we find an amount pattern)
+      // Amount pattern: digits with 2 decimal places, optionally followed by " CR"
+      const transactionMatch = segment.match(/(\d{1,2}\s+[A-Z]{3})\s+(.+?)\s+([\d,]+\.\d{2})(?:\s+CR)?/);
+      
+      if (transactionMatch) {
+        const [, date, merchant, amount] = transactionMatch;
+        
+        // Skip if it's a credit (refund)
+        if (segment.includes(' CR')) {
+          skippedCount++;
+          continue;
+        }
+        
+        // Skip bill payments
+        if (merchant.includes('BILL PAYMENT') || merchant.includes('PAYMENT - DBS')) {
+          skippedCount++;
+          continue;
+        }
+        
+        // Skip fees and charges
+        const skipKeywords = [
+          'FREQUENT FLYER',
+          'ADMIN FEE',
+          'GST @',
+          'FINANCE CHARGE',
+          'LATE PAYMENT',
+          'INSURANCE'
+        ];
+        
+        if (skipKeywords.some(keyword => merchant.includes(keyword))) {
+          skippedCount++;
+          continue;
+        }
+        
+        // Parse amount (remove commas)
+        const parsedAmount = parseFloat(amount.replace(/,/g, ''));
+        
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+          failedParseCount++;
+          if (failedParseCount <= 3) {
+            console.warn(`   ⚠️ Invalid amount in segment: "${segment.substring(0, 100)}"`);
+          }
+          continue;
+        }
+        
+        // Create transaction object
+        transactions.push({
+          date: date.trim(),
+          merchant: merchant.trim(),
+          merchantCleaned: cleanMerchantName(merchant.trim()),
+          amount: parsedAmount,
+          currency: 'SGD',
+          type: 'simple',
+          linesConsumed: 1
+        });
+      } else {
+        failedParseCount++;
+        if (failedParseCount <= 3) {
+          console.warn(`   ⚠️ Could not parse segment: "${segment.substring(0, 100)}"`);
+        }
+      }
+    }
+    
+    console.log(`   Date-split approach found: ${transactions.length} transactions`);
+  }
+  
+  // If still no transactions found, fall back to line-by-line parsing
+  if (transactions.length === 0) {
+    console.log('   Regex parsing found no transactions, trying line-by-line...');
+    const lines = maskedText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    console.log('   Total lines:', lines.length);
+    console.log('   First 10 lines:', lines.slice(0, 10));
+
+    let i = 0;
+    skippedCount = 0;
+    failedParseCount = 0;
+
+    while (i < lines.length) {
+      const line = lines[i];
+
+      // Skip header lines
+      if (line.includes('NEW TRANSACTIONS') || 
+          line.includes('AVISENNA GUSTA') ||
+          line.includes('DESCRIPTION') ||
+          line.includes('AMOUNT') ||
+          line.includes('DATE')) {
+        skippedCount++;
+        i++;
+        continue;
+      }
+
+      // Skip bill payments and credits (not purchases)
+      if (line.includes('BILL PAYMENT') || 
+          line.includes('PAYMENT - DBS') ||
+          /\d+\.\d{2}\s+CR$/.test(line)) {
+        skippedCount++;
+        i++;
+        continue;
+      }
+
+      // Skip fees and admin charges (not carbon-emitting purchases)
+      const skipKeywords = [
+        'FREQUENT FLYER',
+        'ADMIN FEE',
+        'GST @',
+        'FINANCE CHARGE',
+        'LATE PAYMENT',
+        'INSURANCE'
+      ];
+      
+      if (skipKeywords.some(keyword => line.includes(keyword))) {
+        skippedCount++;
+        i++;
+        continue;
+      }
+
+      // Try to parse transaction
+      const transaction = parseSingleTransaction(lines, i);
+      
+      if (transaction) {
+        transactions.push(transaction);
+        i += transaction.linesConsumed;
+      } else {
+        // Couldn't parse, log first few failures for debugging
+        if (failedParseCount < 5) {
+          console.warn(`   ⚠️ Could not parse line ${i + 1}: "${line.substring(0, 80)}"`);
+        }
+        failedParseCount++;
+        i++;
+      }
+    }
+
+    console.log(`   Line-by-line: Skipped lines: ${skippedCount}, Failed to parse: ${failedParseCount}`);
   }
 
   console.log('✅ Parsing complete');
@@ -110,22 +339,53 @@ const parseSingleTransaction = (lines, startIdx) => {
 
   // Pattern 1: Simple SGD transaction
   // Format: DD MMM MERCHANT_NAME AMOUNT
+  // Try more flexible patterns
   const simpleMatch = line.match(
-    /^(\d{2}\s+[A-Z]{3})\s+(.+?)\s+([\d,]+\.\d{2})$/
+    /^(\d{1,2}\s+[A-Z]{3})\s+(.+?)\s+([\d,]+\.\d{2})$/
   );
 
   if (simpleMatch) {
     const [, date, merchant, amount] = simpleMatch;
     
-    return {
-      date: date.trim(),
-      merchant: merchant.trim(),
-      merchantCleaned: cleanMerchantName(merchant.trim()),
-      amount: parseFloat(amount.replace(',', '')),
-      currency: 'SGD',
-      type: 'simple',
-      linesConsumed: 1
-    };
+    // Validate date format (should be like "12 SEP" or "01 OCT")
+    if (date.match(/\d{1,2}\s+[A-Z]{3}/)) {
+      return {
+        date: date.trim(),
+        merchant: merchant.trim(),
+        merchantCleaned: cleanMerchantName(merchant.trim()),
+        amount: parseFloat(amount.replace(/,/g, '')),
+        currency: 'SGD',
+        type: 'simple',
+        linesConsumed: 1
+      };
+    }
+  }
+
+  // Pattern 1b: More flexible - date might be separated differently
+  // Format: DD MMM MERCHANT_NAME ... AMOUNT (amount might have spaces)
+  const flexibleMatch = line.match(
+    /^(\d{1,2}\s+[A-Z]{3})\s+(.+?)\s+([\d,\s]+\.\d{2})$/
+  );
+
+  if (flexibleMatch) {
+    const [, date, merchant, amount] = flexibleMatch;
+    
+    if (date.match(/\d{1,2}\s+[A-Z]{3}/)) {
+      const cleanAmount = amount.replace(/[\s,]/g, '');
+      const parsedAmount = parseFloat(cleanAmount);
+      
+      if (!isNaN(parsedAmount) && parsedAmount > 0) {
+        return {
+          date: date.trim(),
+          merchant: merchant.trim(),
+          merchantCleaned: cleanMerchantName(merchant.trim()),
+          amount: parsedAmount,
+          currency: 'SGD',
+          type: 'simple',
+          linesConsumed: 1
+        };
+      }
+    }
   }
 
   // Pattern 2: Foreign currency transaction (multi-line)

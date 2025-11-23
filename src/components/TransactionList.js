@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import emissionFactors from '../data/emissionFactors.json';
 
 const TransactionList = ({ transactions }) => {
   const [filter, setFilter] = useState('all');
@@ -28,13 +29,13 @@ const TransactionList = ({ transactions }) => {
     let compareValue = 0;
     
     if (sortBy === 'emissions') {
-      compareValue = a.emissions - b.emissions;
+      compareValue = (a.emissions || 0) - (b.emissions || 0);
     } else if (sortBy === 'date') {
       const dateA = new Date(a.date.split('/').reverse().join('-'));
       const dateB = new Date(b.date.split('/').reverse().join('-'));
       compareValue = dateA - dateB;
     } else if (sortBy === 'amount') {
-      compareValue = a.amount - b.amount;
+      compareValue = (a.amount || 0) - (b.amount || 0);
     }
     
     return sortOrder === 'asc' ? compareValue : -compareValue;
@@ -50,12 +51,19 @@ const TransactionList = ({ transactions }) => {
     }
   };
 
-  // Get category info from first transaction (assumes consistent structure)
-  const getCategoryInfo = (categoryKey, transactions) => {
-    const transaction = transactions.find(t => t.category === categoryKey);
+  // Get category info from emissionFactors (more reliable than from transactions)
+  const getCategoryInfo = (categoryKey) => {
+    const categoryData = emissionFactors.categories[categoryKey];
+    if (categoryData) {
+      return {
+        name: categoryData.name,
+        icon: categoryData.icon
+      };
+    }
+    // Fallback for uncategorized or unknown categories
     return {
-      name: transaction?.categoryDetail?.name || categoryKey,
-      icon: transaction?.categoryDetail?.icon || '📊'
+      name: categoryKey === 'uncategorized' ? 'Uncategorized' : categoryKey,
+      icon: categoryKey === 'uncategorized' ? '❓' : '📊'
     };
   };
 
@@ -80,7 +88,7 @@ const TransactionList = ({ transactions }) => {
           >
             <option value="all">All Categories</option>
             {categories.map(cat => {
-              const info = getCategoryInfo(cat, transactions);
+              const info = getCategoryInfo(cat);
               return (
                 <option key={cat} value={cat}>
                   {info.icon} {info.name}
@@ -142,16 +150,16 @@ const TransactionList = ({ transactions }) => {
                   </span>
                 </td>
                 <td className="amount-cell align-right">
-                  ${transaction.amount.toFixed(2)}
+                  ${(transaction.amount || 0).toFixed(2)}
                 </td>
                 <td className="emissions-cell align-right">
                   <span className="emissions-value">
-                    {transaction.emissions.toFixed(2)} kg
+                    {(transaction.emissions || 0).toFixed(2)} kg
                   </span>
                 </td>
                 <td className="factor-cell align-right">
                   <span className="factor-value">
-                    {transaction.factor.toFixed(2)}
+                    {(transaction.factor || 0).toFixed(2)}
                   </span>
                 </td>
               </tr>
@@ -165,13 +173,13 @@ const TransactionList = ({ transactions }) => {
         <div className="summary-item">
           <span className="summary-label">Total Amount:</span>
           <span className="summary-value">
-            ${sortedTransactions.reduce((sum, t) => sum + t.amount, 0).toFixed(2)}
+            ${sortedTransactions.reduce((sum, t) => sum + (t.amount || 0), 0).toFixed(2)}
           </span>
         </div>
         <div className="summary-item highlight">
           <span className="summary-label">Total Emissions:</span>
           <span className="summary-value">
-            {sortedTransactions.reduce((sum, t) => sum + t.emissions, 0).toFixed(2)} kg CO₂e
+            {sortedTransactions.reduce((sum, t) => sum + (t.emissions || 0), 0).toFixed(2)} kg CO₂e
           </span>
         </div>
       </div>
