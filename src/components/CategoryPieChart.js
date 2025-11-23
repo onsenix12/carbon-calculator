@@ -119,22 +119,26 @@ const CategoryPieChart = ({ data }) => {
       {/* Category breakdown - Vertical Bar Chart */}
       <div className="category-breakdown">
         <h4>Detailed Breakdown</h4>
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={400}>
           <BarChart
             data={chartData}
             layout="vertical"
-            margin={{ top: 5, right: 30, left: 100, bottom: 20 }}
+            margin={{ top: 10, right: 40, left: 140, bottom: 30 }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" strokeOpacity={0.6} />
             <XAxis 
               type="number" 
-              label={{ value: 'kg CO₂e', position: 'insideBottom', offset: -5, style: { textAnchor: 'middle' } }}
+              label={{ value: 'kg CO₂e', position: 'insideBottom', offset: -10, style: { textAnchor: 'middle', fontSize: '14px', fontWeight: '600', fill: '#1a1a1a' } }}
+              tick={{ fontSize: 13, fill: '#4a5568', fontWeight: '500' }}
+              tickLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
             />
             <YAxis 
               type="category" 
               dataKey="label"
-              width={130}
-              tick={{ fontSize: 12, fill: '#1a1a1a' }}
+              width={150}
+              tick={{ fontSize: 14, fill: '#1a1a1a', fontWeight: '500' }}
+              tickLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
+              axisLine={{ stroke: '#d1d5db', strokeWidth: 1 }}
             />
             <Tooltip 
               formatter={(value, name, props) => [
@@ -142,9 +146,19 @@ const CategoryPieChart = ({ data }) => {
                 props.payload.icon + ' ' + props.payload.name
               ]}
               contentStyle={{ 
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                border: '1px solid #ccc',
-                borderRadius: '4px'
+                backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                border: '2px solid #667eea',
+                borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                padding: '12px',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+              labelStyle={{ 
+                fontWeight: '600',
+                marginBottom: '8px',
+                fontSize: '15px',
+                color: '#1a1a1a'
               }}
             />
             <Bar 

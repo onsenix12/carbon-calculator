@@ -264,7 +264,7 @@ function App() {
               <p className="processing-message">
                 {processingStep === 0 && 'Reading your PDF file...'}
                 {processingStep === 1 && 'Extracting transaction details...'}
-                {processingStep === 2 && 'Categorizing transactions with AI (this may take 30-60 seconds)...'}
+                {processingStep === 2 && 'Categorizing transactions with AI (this may take 1-3 minutes)...'}
                 {processingStep === 3 && 'Finalizing calculations...'}
               </p>
             </div>
