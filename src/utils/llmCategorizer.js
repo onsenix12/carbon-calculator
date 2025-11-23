@@ -9,8 +9,10 @@
  * Cost: ~$0.0003 per transaction (100 transactions = ~$0.03)
  */
 
-import { buildClaudePrompt, CLAUDE_MODEL, CLAUDE_API_CONFIG, API_CONFIG } from '../constants';
+import { buildClaudePrompt, CLAUDE_MODEL, CLAUDE_API_CONFIG, API_CONFIG, LLM_CONFIG, VALIDATION } from '../constants';
 import { ValidationError, APIError, NetworkError, ERROR_CODES, handleAPIResponse, isNetworkError } from './errors';
+import logger from './logger';
+import { validateNonEmpty, validateNonEmptyArray, validateEmissionFactors } from './validation';
 
 // Use proxy server in development, direct API in production
 // Set REACT_APP_USE_PROXY=true in .env to use local proxy server
