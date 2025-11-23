@@ -1103,14 +1103,14 @@
     flex-wrap: wrap !important;
     justify-content: center !important;
     align-items: center !important;
-    gap: 16px 24px !important;
+    gap: 8px 12px !important;
     padding: 10px 0 !important;
   }
 
   .recharts-legend-item {
     margin: 0 !important;
-    margin-right: 24px !important;
-    margin-bottom: 8px !important;
+    margin-right: 12px !important;
+    margin-bottom: 4px !important;
     display: inline-flex !important;
     align-items: center !important;
     white-space: nowrap !important;
