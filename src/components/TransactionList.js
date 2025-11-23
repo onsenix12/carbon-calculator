@@ -135,7 +135,9 @@ const TransactionList = ({ transactions }) => {
             </tr>
           </thead>
           <tbody>
-            {sortedTransactions.map((transaction, index) => (
+            {sortedTransactions.map((transaction, index) => {
+              const categoryInfo = getCategoryInfo(transaction.category);
+              return (
               <tr key={index} className="transaction-row">
                 <td className="date-cell">{transaction.date}</td>
                 <td className="merchant-cell">
@@ -146,7 +148,7 @@ const TransactionList = ({ transactions }) => {
                 </td>
                 <td className="category-cell">
                   <span className="category-badge">
-                    {transaction.categoryDetail?.icon || '📊'} {transaction.categoryDetail?.name || transaction.category}
+                    {categoryInfo.icon} {categoryInfo.name}
                   </span>
                 </td>
                 <td className="amount-cell align-right">
@@ -163,7 +165,8 @@ const TransactionList = ({ transactions }) => {
                   </span>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -1080,15 +1080,32 @@
     text-align: center;
   }
 
-  /* Improve Recharts Legend contrast */
+  /* Improve Recharts Legend contrast and spacing */
   .recharts-legend-wrapper {
     color: #1a1a1a !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 16px 24px !important;
+    padding: 10px 0 !important;
+  }
+
+  .recharts-legend-item {
+    margin: 0 !important;
+    margin-right: 24px !important;
+    margin-bottom: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    white-space: nowrap !important;
   }
 
   .recharts-legend-item-text {
     color: #1a1a1a !important;
     font-weight: 500 !important;
     font-size: 14px !important;
+    margin-left: 6px !important;
   }
   
   .category-breakdown {
