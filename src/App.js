@@ -5,6 +5,11 @@ import ResultsSummary from './components/ResultsSummary';
 import TransactionList from './components/TransactionList';
 import CategoryPieChart from './components/CategoryPieChart';
 import ComparisonView from './components/ComparisonView';
+import { parsePDF } from './utils/pdfParser';
+import { parseDBSTransactions } from './utils/transactionParser';
+import { categorizeAllTransactions } from './utils/llmCategorizer';
+import { calculateFootprint } from './utils/emissionCalculator';
+import emissionFactors from './data/emissionFactors.json';
 
 function App() {
   const [step, setStep] = useState('upload'); // 'upload', 'processing', 'results'
@@ -22,31 +27,40 @@ function App() {
     setLoading(true);
 
     try {
-      // TODO: Phase 3 - PDF Parsing
-      // const extractedText = await pdfParser.extractText(file);
-      // const parsedTransactions = await transactionParser.parse(extractedText);
+      console.log('🚀 Starting processing pipeline...');
       
-      // TODO: Phase 4 - LLM Categorization
-      // const categorizedTransactions = await llmCategorizer.categorize(parsedTransactions);
+      // Step 1: Parse PDF and extract transaction section
+      console.log('Step 1: Parsing PDF...');
+      const { transactionText, metadata } = await parsePDF(file);
       
-      // TODO: Phase 5 - Emission Calculation
-      // const calculatedResults = emissionCalculator.calculateFootprint(categorizedTransactions);
+      // Step 2: Parse individual transactions
+      console.log('Step 2: Parsing transactions...');
+      const parsedTransactions = parseDBSTransactions(transactionText);
       
-      // TODO: Get DBS comparison value (from user input or separate calculation)
-      // setDbsTotal(userProvidedDbsValue);
+      if (parsedTransactions.length === 0) {
+        throw new Error('No transactions found in the PDF. Please check that this is a valid DBS credit card statement.');
+      }
       
-      // Placeholder - will be replaced with actual implementation
-      console.log('Processing file:', file.name);
-      setError('PDF parsing not yet implemented. Coming in next step!');
-      setStep('upload');
+      // Step 3: Categorize transactions using LLM (with keyword fallback)
+      console.log('Step 3: Categorizing transactions...');
+      const categorizedTransactions = await categorizeAllTransactions(
+        parsedTransactions,
+        emissionFactors,
+        { useLLM: true } // Will automatically fallback to keywords if API key missing
+      );
       
-      // Example of what the final flow will look like:
-      // setTransactions(categorizedTransactions);
-      // setResults(calculatedResults);
-      // setStep('results');
+      // Step 4: Calculate carbon footprint
+      console.log('Step 4: Calculating emissions...');
+      const calculatedResults = calculateFootprint(categorizedTransactions, emissionFactors);
+      
+      // Step 5: Set results and show
+      console.log('✅ Processing complete!');
+      setTransactions(categorizedTransactions);
+      setResults(calculatedResults);
+      setStep('results');
       
     } catch (err) {
-      console.error('Error processing PDF:', err);
+      console.error('❌ Error processing PDF:', err);
       setError(err.message || 'Failed to process PDF. Please try again.');
       setStep('upload');
     } finally {

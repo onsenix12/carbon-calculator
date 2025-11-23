@@ -2,6 +2,7 @@
     "name": "carbon-calculator",
     "version": "0.1.0",
     "private": true,
+    "homepage": "https://onsenix12.github.io/carbon-calculator",
     "description": "Personal Carbon Footprint Calculator - IS626 SMU Assignment",
     "author": "Avisenna Gusta",
     "dependencies": {
