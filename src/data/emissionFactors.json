@@ -1,0 +1,507 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "last_updated": "2024-11-23",
+    "currency": "SGD",
+    "region": "Singapore",
+    "sources": {
+      "sefr": {
+        "name": "Singapore Emission Factors Registry",
+        "version": "2025",
+        "url": "https://sefr.netzerohub.sg/",
+        "authority": "Singapore Business Federation (SBF)"
+      },
+      "ema": {
+        "name": "Energy Market Authority Singapore",
+        "data": "Grid Emission Factor 2023",
+        "url": "https://www.ema.gov.sg/"
+      },
+      "defra": {
+        "name": "UK DEFRA GHG Conversion Factors",
+        "version": "2025",
+        "url": "https://www.gov.uk/government/collections/government-conversion-factors-for-company-reporting",
+        "note": "Adjusted for SGD where applicable"
+      },
+      "dbs": {
+        "name": "DBS LiveBetter",
+        "method": "Reverse-engineered from October 2024 data",
+        "note": "For comparison purposes"
+      },
+      "research": {
+        "note": "Spend-based factors derived from peer-reviewed literature and industry reports (EXIOBASE, EPA USEEIO)"
+      }
+    },
+    "methodology": {
+      "priority": "SEFR (Singapore-specific) > Industry research > DBS comparison",
+      "approach": "Hybrid: Activity-based for utilities/transport where possible, spend-based for consumption",
+      "limitations": [
+        "Spend-based factors are averages and may not reflect specific merchant practices",
+        "Currency conversion from GBP/USD to SGD may introduce variance",
+        "Emission factors are estimates and should not be used for regulatory reporting"
+      ]
+    },
+    "notes": [
+      "This database is for educational and personal carbon footprint calculation purposes",
+      "Priority given to Singapore-specific SEFR factors where available",
+      "Spend-based factors estimated using industry-standard methodologies",
+      "All factors in kg CO2-equivalent (CO2e) including major greenhouse gases"
+    ]
+  },
+  "categories": {
+    "food_dining": {
+      "name": "Food & Dining",
+      "icon": "🍽️",
+      "description": "Restaurant dining, food delivery, cafes, and food purchases",
+      "subcategories": {
+        "hawker": {
+          "factor": 0.60,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate",
+          "confidence": "medium",
+          "keywords": ["hawker", "kopitiam", "food court", "food centre", "amoy", "maxwell", "toa payoh"],
+          "examples": ["Hawker centers", "Kopitiams", "Food courts"],
+          "rationale": "Lower factor due to local sourcing, simpler preparation, less packaging"
+        },
+        "fast_food": {
+          "factor": 1.00,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate (DEFRA-based)",
+          "confidence": "medium",
+          "keywords": ["mcdonald", "kfc", "burger king", "subway", "wendy", "popeyes", "texas chicken", "a&w", "carl"],
+          "examples": ["McDonald's", "KFC", "Burger King", "Subway"],
+          "rationale": "Higher factor due to meat-heavy menus, packaging, global supply chains"
+        },
+        "restaurant_casual": {
+          "factor": 0.80,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate",
+          "confidence": "medium",
+          "keywords": ["restaurant", "cafe", "bistro", "dining", "eatery", "coffee", "starbucks", "toast box"],
+          "examples": ["Casual dining restaurants", "Chain cafes"],
+          "rationale": "Moderate factor for mixed cuisine, medium supply chain complexity"
+        },
+        "restaurant_fine_dining": {
+          "factor": 1.20,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate",
+          "confidence": "low",
+          "keywords": ["nobu", "odette", "burnt ends", "corner house", "jaan", "zen", "les amis"],
+          "examples": ["Nobu", "Odette", "Fine dining establishments"],
+          "rationale": "Higher factor due to imported ingredients, elaborate preparation, extensive packaging",
+          "comparison_dbs": {
+            "dbs_factor": 0.49,
+            "note": "DBS uses generic food factor ~0.50 kg CO2/SGD for all dining"
+          }
+        },
+        "food_delivery": {
+          "factor": 0.90,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate + transport overhead",
+          "confidence": "medium",
+          "keywords": ["grab food", "grabfood", "foodpanda", "deliveroo", "delivery"],
+          "examples": ["GrabFood", "Foodpanda", "Deliveroo"],
+          "rationale": "Base food + delivery transport + packaging overhead"
+        },
+        "groceries": {
+          "factor": 0.70,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate",
+          "confidence": "medium",
+          "keywords": ["ntuc", "fairprice", "cold storage", "sheng siong", "giant", "prime", "redmart", "marketplace"],
+          "examples": ["NTUC FairPrice", "Cold Storage", "Sheng Siong"],
+          "rationale": "Mixed basket of local and imported goods"
+        }
+      }
+    },
+    "transport": {
+      "name": "Transport",
+      "icon": "🚗",
+      "description": "Transportation including ride-hailing, public transit, and personal vehicles",
+      "subcategories": {
+        "ride_hailing": {
+          "factor": 0.50,
+          "unit": "kg CO2e/SGD",
+          "source": "Estimated from SEFR transport factors",
+          "confidence": "medium",
+          "keywords": ["grab", "gojek", "tada", "ryde", "taxi", "comfort", "trans-cab", "smrt taxi", "premier"],
+          "examples": ["Grab", "GoJek", "Taxi services"],
+          "rationale": "Average trip ~SGD 15, ~8km → 0.17 kg CO2/pax-km (SEFR ICE car) → ~1.36 kg / 15 SGD = 0.09 kg/SGD base, multiplied for overhead",
+          "sefr_reference": {
+            "activity_based": 0.17,
+            "unit": "kg CO2e/pax-km",
+            "vehicle_type": "ICE Car",
+            "year": 2022,
+            "note": "SEFR provides activity-based (pax-km). Spend-based is estimated."
+          }
+        },
+        "public_transit": {
+          "factor": 0.10,
+          "unit": "kg CO2e/SGD",
+          "source": "Estimated from SEFR",
+          "confidence": "high",
+          "keywords": ["ez-link", "ezlink", "simplygo", "transitlink", "smrt", "sbst", "mrt", "lrt", "bus"],
+          "examples": ["MRT", "Bus", "EZ-Link top-ups"],
+          "rationale": "Average trip ~SGD 2, ~10km → 0.01 kg CO2/pax-km (SEFR Train) → 0.10 kg / 2 SGD = 0.05 kg/SGD",
+          "sefr_reference": {
+            "train": {
+              "activity_based": 0.01,
+              "unit": "kg CO2e/pax-km",
+              "year": 2022
+            },
+            "bus": {
+              "activity_based": 0.07,
+              "unit": "kg CO2e/pax-km",
+              "year": 2022
+            }
+          }
+        },
+        "petrol_diesel": {
+          "factor": 2.50,
+          "unit": "kg CO2e/litre",
+          "source": "SEFR Fuel Combustion",
+          "confidence": "high",
+          "keywords": ["shell", "esso", "caltex", "sinopec", "petrol", "diesel", "fuel"],
+          "examples": ["Petrol stations"],
+          "rationale": "Direct from SEFR fuel combustion factors",
+          "sefr_reference": {
+            "petrol": "~3.1 kg CO2/tonne combusted (SEFR Fuel)",
+            "conversion_note": "Adjusted to per-litre basis"
+          }
+        },
+        "flight_spend": {
+          "factor": 1.10,
+          "unit": "kg CO2e/SGD",
+          "source": "DBS LiveBetter (reverse-engineered)",
+          "confidence": "low",
+          "keywords": ["singapore airlines", "sia", "scoot", "jetstar", "airasia", "malindo", "cathay", "emirates", "flight", "airline"],
+          "examples": ["Singapore Airlines", "Scoot", "Budget airlines"],
+          "rationale": "Spend-based is inaccurate for flights - distance-based preferred",
+          "comparison_dbs": {
+            "dbs_factor": 1.10,
+            "method": "Spend-based",
+            "limitation": "Does not account for flight distance or class - highly inaccurate"
+          },
+          "recommendation": "Use distance-based calculation when flight route is known"
+        }
+      }
+    },
+    "utilities": {
+      "name": "Utilities",
+      "icon": "⚡",
+      "description": "Home utilities including electricity and water",
+      "subcategories": {
+        "electricity": {
+          "factor": 0.4120,
+          "unit": "kg CO2e/kWh",
+          "source": "SEFR (EMA Singapore Grid Emission Factor 2023)",
+          "confidence": "very_high",
+          "keywords": ["sp services", "sp group", "electricity", "power", "energy", "geneco", "keppel", "sembcorp"],
+          "examples": ["SP Services", "SP Group", "Electricity retailers"],
+          "rationale": "Official Singapore grid emission factor - most accurate available",
+          "sefr_reference": {
+            "value": 0.4120,
+            "unit": "kg CO2e/kWh",
+            "year": 2023,
+            "method": "Operating Margin Grid Emissions Factor",
+            "source_authority": "Energy Market Authority (EMA)"
+          },
+          "note": "Activity-based (kWh) strongly preferred over spend-based for electricity",
+          "spend_based_fallback": {
+            "factor": 0.50,
+            "unit": "kg CO2e/SGD",
+            "note": "Only use if kWh data unavailable. Assumes average SGD 0.25/kWh tariff."
+          }
+        },
+        "water": {
+          "factor": 0.57,
+          "unit": "kg CO2e/m³",
+          "source": "SEFR (Potable Water and NEWater)",
+          "confidence": "high",
+          "keywords": ["pub", "water", "newater"],
+          "examples": ["PUB water bills"],
+          "rationale": "Singapore-specific factor accounting for desalination and NEWater treatment",
+          "sefr_reference": {
+            "value": 0.57,
+            "unit": "kg CO2e/m³",
+            "year": 2023,
+            "category": "Potable Water and NEWater"
+          },
+          "note": "Activity-based (m³) preferred",
+          "spend_based_fallback": {
+            "factor": 0.40,
+            "unit": "kg CO2e/SGD",
+            "note": "Only use if m³ data unavailable. Assumes average tariff."
+          }
+        },
+        "gas": {
+          "factor": 2.00,
+          "unit": "kg CO2e/m³",
+          "source": "Research estimate",
+          "confidence": "medium",
+          "keywords": ["city gas", "town gas", "piped gas"],
+          "examples": ["City Gas"],
+          "rationale": "Natural gas combustion factor"
+        }
+      }
+    },
+    "shopping": {
+      "name": "Shopping & Retail",
+      "icon": "🛍️",
+      "description": "Retail purchases including clothing, electronics, and general goods",
+      "subcategories": {
+        "clothing_fast_fashion": {
+          "factor": 0.80,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate (DEFRA textile factors adjusted)",
+          "confidence": "medium",
+          "keywords": ["uniqlo", "zara", "h&m", "cotton on", "forever 21", "pull&bear", "bershka", "fashion", "clothing"],
+          "examples": ["Uniqlo", "Zara", "H&M"],
+          "rationale": "Textile production, international shipping, retail overhead"
+        },
+        "clothing_premium": {
+          "factor": 0.60,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate",
+          "confidence": "low",
+          "keywords": ["charles & keith", "pedro", "zalora", "boutique"],
+          "examples": ["Premium fashion retailers"],
+          "rationale": "Higher price per item, similar production footprint = lower per-dollar factor"
+        },
+        "electronics": {
+          "factor": 0.40,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate (DEFRA electrical equipment adjusted)",
+          "confidence": "medium",
+          "keywords": ["apple", "samsung", "courts", "best denki", "challenger", "harvey norman", "gain city", "lazada", "shopee electronics"],
+          "examples": ["Apple Store", "Courts", "Challenger"],
+          "rationale": "High embodied carbon but expensive items = moderate per-dollar factor"
+        },
+        "general_retail": {
+          "factor": 0.65,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate",
+          "confidence": "medium",
+          "keywords": ["don don donki", "daiso", "miniso", "muji", "ikea", "home", "furnishing"],
+          "examples": ["Don Don Donki", "IKEA", "General retailers"],
+          "rationale": "Mixed goods, moderate supply chain complexity"
+        },
+        "supermarket": {
+          "factor": 0.70,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate",
+          "confidence": "medium",
+          "keywords": ["ntuc", "fairprice", "cold storage", "sheng siong", "giant", "prime", "marketplace"],
+          "examples": ["NTUC FairPrice", "Cold Storage"],
+          "rationale": "Mixed basket - food + household goods"
+        },
+        "online_shopping": {
+          "factor": 0.75,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate + delivery overhead",
+          "confidence": "low",
+          "keywords": ["lazada", "shopee", "qoo10", "amazon", "taobao", "online"],
+          "examples": ["Lazada", "Shopee", "Online marketplaces"],
+          "rationale": "Product emissions + packaging + delivery transport overhead"
+        },
+        "pharmacy_health": {
+          "factor": 0.55,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate",
+          "confidence": "low",
+          "keywords": ["watsons", "guardian", "unity", "pharmacy", "healthcare"],
+          "examples": ["Watsons", "Guardian"],
+          "rationale": "Pharmaceutical products, moderate supply chain"
+        }
+      }
+    },
+    "entertainment": {
+      "name": "Entertainment & Services",
+      "icon": "🎬",
+      "description": "Entertainment, leisure, and subscription services",
+      "subcategories": {
+        "cinema": {
+          "factor": 0.30,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate",
+          "confidence": "low",
+          "keywords": ["cathay", "gv", "golden village", "shaw", "cinema", "movie", "film"],
+          "examples": ["Cathay Cineplexes", "Golden Village", "Shaw"],
+          "rationale": "Service-based, facility energy use amortized per ticket"
+        },
+        "streaming_subscription": {
+          "factor": 0.20,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate (datacenter energy)",
+          "confidence": "low",
+          "keywords": ["netflix", "spotify", "disney", "hbo", "amazon prime", "apple music", "youtube premium"],
+          "examples": ["Netflix", "Spotify", "Streaming services"],
+          "rationale": "Datacenter energy per subscriber hour, amortized over subscription cost"
+        },
+        "gym_fitness": {
+          "factor": 0.35,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate",
+          "confidence": "low",
+          "keywords": ["fitness first", "anytime fitness", "pure fitness", "gym", "activesg"],
+          "examples": ["Fitness First", "Anytime Fitness", "Gyms"],
+          "rationale": "Facility energy, equipment manufacturing amortized over memberships"
+        },
+        "gaming": {
+          "factor": 0.25,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate",
+          "confidence": "low",
+          "keywords": ["steam", "playstation", "xbox", "nintendo", "epic games", "gaming"],
+          "examples": ["Steam", "PlayStation Store", "Gaming services"],
+          "rationale": "Digital distribution, lower physical production overhead"
+        },
+        "general_services": {
+          "factor": 0.35,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate",
+          "confidence": "low",
+          "keywords": ["service", "salon", "spa", "wellness", "beauty"],
+          "examples": ["Salons", "Spas", "Personal services"],
+          "rationale": "Service-based activities with facility overhead"
+        }
+      }
+    },
+    "travel": {
+      "name": "Travel & Accommodation",
+      "icon": "✈️",
+      "description": "Travel expenses including accommodation",
+      "subcategories": {
+        "hotel_singapore": {
+          "factor": 0.45,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate (DEFRA hotel stay adjusted)",
+          "confidence": "medium",
+          "keywords": ["hotel", "staycation", "marina bay sands", "raffles", "shangri-la", "marriott", "hilton"],
+          "examples": ["Hotels", "Staycation packages"],
+          "rationale": "Energy use, housekeeping, F&B, facilities per night"
+        },
+        "hotel_overseas": {
+          "factor": 0.50,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate",
+          "confidence": "low",
+          "keywords": ["booking.com", "agoda", "expedia", "airbnb"],
+          "examples": ["International hotel bookings"],
+          "rationale": "Variable by location, average estimate"
+        },
+        "flight_spend_longhaul": {
+          "factor": 1.10,
+          "unit": "kg CO2e/SGD",
+          "source": "DBS comparison",
+          "confidence": "very_low",
+          "keywords": ["long haul", "international flight", "business class"],
+          "examples": ["Long-haul flights"],
+          "rationale": "Highly inaccurate - distance-based calculation strongly recommended",
+          "warning": "Spend-based flight calculations are unreliable. Use distance-based when possible."
+        }
+      }
+    },
+    "uncategorized": {
+      "name": "Uncategorized",
+      "icon": "❓",
+      "description": "Fallback category for unrecognized merchants",
+      "subcategories": {
+        "default": {
+          "factor": 0.50,
+          "unit": "kg CO2e/SGD",
+          "source": "Conservative average across all categories",
+          "confidence": "very_low",
+          "keywords": [],
+          "examples": ["Unknown merchants"],
+          "rationale": "Conservative mid-point estimate when categorization fails",
+          "note": "This is a fallback only. Manual review recommended for uncategorized transactions."
+        }
+      }
+    }
+  },
+  "comparison_data": {
+    "dbs_livebetter": {
+      "description": "Reverse-engineered emission factors from DBS LiveBetter October 2024 data",
+      "method": "Calculated from actual transactions and reported emissions",
+      "factors": {
+        "food_all": {
+          "observed_factor": 0.49,
+          "unit": "kg CO2e/SGD",
+          "sample_transactions": [
+            {"merchant": "SO PHO-JEWEL", "amount": 98.08, "emissions": 48},
+            {"merchant": "NOBU YA", "amount": 42.51, "emissions": 21},
+            {"merchant": "FISH MART SAKURAYA", "amount": 38.37, "emissions": 19}
+          ],
+          "note": "DBS uses single factor for all food types - no differentiation"
+        },
+        "flight": {
+          "observed_factor": 1.10,
+          "unit": "kg CO2e/SGD",
+          "sample_transactions": [
+            {"route": "SIN-ROME", "amount": 746.79, "emissions": 823},
+            {"route": "SIN-ROME", "amount": 637.84, "emissions": 703}
+          ],
+          "note": "Spend-based flight calculation - highly inaccurate"
+        }
+      },
+      "october_2024_total": {
+        "total_emissions": 1869,
+        "unit": "kg CO2e",
+        "breakdown": {
+          "travel": {"emissions": 1670, "percentage": 89.4},
+          "transport": {"emissions": 16, "percentage": 0.9},
+          "food": {"emissions": 183, "percentage": 9.8}
+        }
+      }
+    }
+  },
+  "validation": {
+    "singapore_averages": {
+      "per_capita_annual": {
+        "value": 832,
+        "unit": "kg CO2e",
+        "source": "Singapore avg from DBS comparison data",
+        "note": "Monthly average would be ~69 kg CO2e/month"
+      },
+      "singapore_target": {
+        "value": 273,
+        "unit": "kg CO2e",
+        "source": "DBS LiveBetter sustainability target",
+        "note": "Ambitious reduction target"
+      }
+    },
+    "sanity_checks": {
+      "typical_monthly_range": {
+        "min": 500,
+        "max": 2500,
+        "unit": "kg CO2e",
+        "note": "Typical range for Singapore individual excluding flights"
+      },
+      "warning_threshold": {
+        "value": 3000,
+        "unit": "kg CO2e",
+        "message": "Very high monthly footprint - likely includes international travel"
+      }
+    }
+  },
+  "usage_guidelines": {
+    "category_priority": [
+      "1. Use SEFR activity-based factors (electricity, water, transport) when consumption data available",
+      "2. Use spend-based factors for retail/food where activity data not available",
+      "3. Flag high-uncertainty categories (flights, hotels) for user review"
+    ],
+    "confidence_levels": {
+      "very_high": "Official Singapore government data (SEFR, EMA)",
+      "high": "SEFR Singapore-specific factors",
+      "medium": "Research-based estimates with Singapore context",
+      "low": "Industry averages adjusted for Singapore",
+      "very_low": "Conservative estimates or DBS comparison only"
+    },
+    "limitations": [
+      "Spend-based factors are industry averages and may not reflect specific merchants",
+      "Flight emissions should use distance-based calculation when route is known",
+      "Electricity and water strongly prefer activity-based (kWh, m³) over spend-based",
+      "Factors are estimates for personal education, not for regulatory compliance"
+    ]
+  }
+}
