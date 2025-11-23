@@ -39,8 +39,24 @@
       "ajv": "^8.12.0",
       "ajv-keywords": "^5.1.0",
       "ajv-formats": "^1.6.1",
-      "**/ajv": "^8.12.0",
-      "**/ajv-keywords": "^5.1.0",
-      "**/ajv-formats": "^1.6.1"
+      "schema-utils": {
+        "ajv": "^8.12.0",
+        "ajv-keywords": "^5.1.0",
+        "ajv-formats": "^1.6.1"
+      },
+      "webpack": {
+        "schema-utils": {
+          "ajv": "^8.12.0",
+          "ajv-keywords": "^5.1.0",
+          "ajv-formats": "^1.6.1"
+        }
+      },
+      "terser-webpack-plugin": {
+        "schema-utils": {
+          "ajv": "^8.12.0",
+          "ajv-keywords": "^5.1.0",
+          "ajv-formats": "^1.6.1"
+        }
+      }
     }
   }
