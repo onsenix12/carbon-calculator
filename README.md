@@ -156,6 +156,15 @@ npm run build
 - Safari 14+
 - Edge 90+
 
+## 🌐 Deployment
+
+The app is deployed to **GitHub Pages** with a **Vercel proxy server** for LLM API access:
+
+- **Frontend**: https://onsenix12.github.io/carbon-calculator
+- **API Proxy**: https://carbon-calculator-proxy.vercel.app/api/categorize
+
+The proxy server handles Anthropic API requests to avoid CORS issues when accessing from GitHub Pages.
+
 ## 🐛 Known Issues
 
 - PDF parser not yet implemented
@@ -168,5 +177,5 @@ For issues or questions, contact via course portal.
 
 ---
 
-**Last Updated**: 2024-11-23  
+**Last Updated**: 2025-01-23  
 **Version**: 0.1.0 (Initial Setup)
