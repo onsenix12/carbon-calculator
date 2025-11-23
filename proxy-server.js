@@ -14,6 +14,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const { buildClaudePrompt, CLAUDE_API_CONFIG } = require('./shared/constants');
 
 const app = express();
 const PORT = 3001;
@@ -40,47 +41,20 @@ app.post('/api/categorize', async (req, res) => {
     .filter(c => c !== 'uncategorized')
     .join(', ');
 
-  const prompt = `You are a transaction categorizer for carbon footprint calculation in Singapore.
-
-Merchant: "${merchantName}"
-
-Available categories: ${categoryList}
-
-Task: Return ONLY the category name that best matches this merchant.
-If uncertain, return "uncategorized".
-
-Rules:
-- food_dining: Restaurants, cafes, food courts, hawkers, food delivery
-- transport: Grab, taxis, MRT, buses, petrol stations, ride-hailing, public transport
-- utilities: Electricity, water, gas bills
-- shopping: Retail stores, supermarkets, clothing, electronics
-- entertainment: Netflix, Spotify, gyms, cinemas, games
-- travel: Hotels, flights, accommodation
-
-Examples:
-- "GRAB" → transport
-- "PUBLIC TRANSPORT" → transport
-- "BUS/MRT" → transport
-- "KOUFU" → food_dining
-- "NTUC FAIRPRICE" → shopping
-- "SP SERVICES" → utilities
-- "NETFLIX" → entertainment
-- "DON DON DONKI" → shopping
-
-Response (one word only):`;
+  const prompt = buildClaudePrompt(merchantName, categoryList);
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
+        'anthropic-version': CLAUDE_API_CONFIG.anthropic_version,
         'content-type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 20,
-        temperature: 0,
+        model: CLAUDE_API_CONFIG.model,
+        max_tokens: CLAUDE_API_CONFIG.max_tokens,
+        temperature: CLAUDE_API_CONFIG.temperature,
         messages: [{
           role: 'user',
           content: prompt

@@ -1,4 +1,5 @@
 import React from 'react';
+import { extractMonth, MONTH_MAP, MONTH_ORDER, getMonthLabel } from '../utils/dateUtils';
 
 /**
  * Extract unique months from transactions
@@ -6,40 +7,27 @@ import React from 'react';
  * @returns {Array} - Array of month objects { month: 'SEP', label: 'September', count: 5 }
  */
 export const extractMonths = (transactions) => {
-  const monthMap = {
-    'JAN': 'January', 'FEB': 'February', 'MAR': 'March', 'APR': 'April',
-    'MAY': 'May', 'JUN': 'June', 'JUL': 'July', 'AUG': 'August',
-    'SEP': 'September', 'OCT': 'October', 'NOV': 'November', 'DEC': 'December'
-  };
-
   const monthCounts = {};
   
   transactions.forEach(transaction => {
     if (transaction.date) {
-      const parts = transaction.date.trim().split(/\s+/);
-      if (parts.length >= 2) {
-        const month = parts[1].toUpperCase();
-        if (monthMap[month]) {
-          if (!monthCounts[month]) {
-            monthCounts[month] = 0;
-          }
-          monthCounts[month]++;
+      const month = extractMonth(transaction.date);
+      if (month) {
+        if (!monthCounts[month]) {
+          monthCounts[month] = 0;
         }
+        monthCounts[month]++;
       }
     }
   });
-
-  // Convert to array and sort by month order
-  const monthOrder = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 
-                      'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
   
   return Object.keys(monthCounts)
     .map(month => ({
       month,
-      label: monthMap[month],
+      label: getMonthLabel(month),
       count: monthCounts[month]
     }))
-    .sort((a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month));
+    .sort((a, b) => MONTH_ORDER.indexOf(a.month) - MONTH_ORDER.indexOf(b.month));
 };
 
 const MonthFilter = ({ transactions, selectedMonth, onMonthChange }) => {

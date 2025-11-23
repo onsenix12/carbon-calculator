@@ -6,9 +6,115 @@ Personal carbon footprint calculator built for **IS626: Digital Tech & Sustainab
 
 This tool parses DBS credit card statements (PDF), categorizes transactions using Claude AI, calculates carbon emissions using Singapore-specific emission factors (SEFR), and displays results with visualizations.
 
-## 🚀 Quick Start in Cursor IDE
+**Key Features:**
+- 📄 PDF statement parsing (DBS/POSB credit cards)
+- 🤖 AI-powered transaction categorization (Claude API)
+- 🧮 Carbon footprint calculation using Singapore emission factors
+- 📊 Interactive charts and visualizations
+- 🔒 Privacy-first: All processing happens in your browser
+- 🌐 Production-ready deployment (GitHub Pages + Vercel proxy)
 
-### Step 1: Install Dependencies
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Node.js 16+ and npm
+- Claude API key from [Anthropic Console](https://console.anthropic.com/)
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/onsenix12/carbon-calculator.git
+   cd carbon-calculator
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables:**
+   
+   Create a `.env` file in the project root:
+   ```env
+   REACT_APP_CLAUDE_API_KEY=your_api_key_here
+   REACT_APP_USE_PROXY=true
+   ```
+   
+   **Get your API key:** https://console.anthropic.com/
+
+4. **Start the development servers:**
+   
+   **Terminal 1 - Proxy Server:**
+   ```bash
+   npm run proxy
+   ```
+   
+   **Terminal 2 - React App:**
+   ```bash
+   npm start
+   ```
+   
+   The app will open at http://localhost:3000
+
+5. **Test it:**
+   - Upload a DBS credit card statement PDF
+   - Check browser console (F12) for processing logs
+   - View your carbon footprint results!
+
+## 📁 Project Structure
+
+```
+carbon-calculator/
+├── public/
+│   ├── index.html
+│   └── pdf.worker.min.js
+├── src/
+│   ├── components/          # React components
+│   │   ├── FileUpload.js
+│   │   ├── ResultsSummary.js
+│   │   ├── TransactionList.js
+│   │   ├── CategoryPieChart.js
+│   │   ├── ComparisonView.js
+│   │   ├── MonthFilter.js
+│   │   └── MethodologyInfo.js
+│   ├── utils/               # Utility functions
+│   │   ├── pdfParser.js
+│   │   ├── transactionParser.js
+│   │   │   ├── strategies.js
+│   │   │   └── singleTransaction.js
+│   │   ├── privacyMasking.js
+│   │   ├── llmCategorizer.js
+│   │   ├── emissionCalculator.js
+│   │   ├── dateUtils.js
+│   │   ├── validation.js
+│   │   ├── errors.js
+│   │   └── logger.js
+│   ├── constants/           # Shared constants
+│   │   └── index.js
+│   ├── data/
+│   │   └── emissionFactors.json
+│   ├── App.js
+│   ├── App.css
+│   ├── index.js
+│   └── index.css
+├── api/                     # Vercel serverless function
+│   └── categorize.js
+├── shared/                  # Shared between client and server
+│   └── constants.js
+├── proxy-server.js          # Local development proxy
+├── package.json
+├── vercel.json
+├── .env                     # Environment variables (create this)
+└── README.md
+```
+
+## 🔧 Development
+
+### Local Development Setup
+
+#### 1. Install Dependencies
 
 ```bash
 npm install
@@ -18,111 +124,209 @@ This installs:
 - React 18.2.0
 - PDF.js 3.11.174 (PDF parsing)
 - Recharts 2.10.3 (charts)
+- Express, CORS, dotenv (proxy server)
 
-### Step 2: Set Up Environment Variables
+#### 2. Configure Environment Variables
 
-Create a `.env` file in the project root:
-
-```bash
-REACT_APP_CLAUDE_API_KEY=your_api_key_here
+Create `.env` file:
+```env
+REACT_APP_CLAUDE_API_KEY=sk-ant-api03-your-key-here
+REACT_APP_USE_PROXY=true
+REACT_APP_PROXY_URL=http://localhost:3001/api/categorize
 ```
 
-**Important**: 
-- Never commit `.env` to Git
-- Add `.env` to `.gitignore`
+#### 3. Run Development Servers
 
-### Step 3: Copy Emission Factors Database
-
-Copy the `emissionFactors.json` file to `src/data/`:
-
+**Terminal 1 - Proxy Server (Required for LLM):**
 ```bash
-cp /path/to/emissionFactors.json src/data/
+npm run proxy
 ```
 
-### Step 4: Run Development Server
-
+**Terminal 2 - React App:**
 ```bash
 npm start
 ```
 
-Opens at: http://localhost:3000
+**Why two servers?** The Claude API blocks direct browser requests (CORS). The proxy server forwards requests from the browser to the API.
 
-## 📁 Project Structure
+#### 4. Verify LLM is Working
 
-```
-carbon-calculator/
-├── public/
-│   ├── index.html          # HTML entry point
-│   └── pdf.worker.min.js   # PDF.js worker (will be added)
-├── src/
-│   ├── components/         # React components
-│   │   ├── FileUpload.js
-│   │   ├── ResultsSummary.js
-│   │   ├── TransactionList.js
-│   │   └── CategoryPieChart.js
-│   ├── utils/              # Utility functions
-│   │   ├── pdfParser.js
-│   │   ├── transactionParser.js
-│   │   ├── privacyMasking.js
-│   │   ├── llmCategorizer.js
-│   │   └── emissionCalculator.js
-│   ├── data/
-│   │   └── emissionFactors.json
-│   ├── App.js              # Main app component
-│   ├── App.css             # App styles
-│   ├── index.js            # React entry point
-│   └── index.css           # Global styles
-├── package.json
-├── .env                    # Environment variables (create this)
-├── .gitignore
-└── README.md
+1. Open browser console (F12)
+2. Look for: `🔧 LLM Configuration: { USE_PROXY: true, ... }`
+3. Upload a PDF
+4. Check console for: `LLM successes: X` (should be > 0)
+
+**Expected Results:**
+- ✅ With LLM: ~90% categorization accuracy, ~5-10% uncategorized
+- ❌ Without LLM: ~30% accuracy, ~40-50% uncategorized
+
+### Available Scripts
+
+```bash
+npm start          # Start React development server
+npm run proxy      # Start local proxy server
+npm run build      # Build for production
+npm test           # Run tests
 ```
 
-## 🔧 Development Progress
+## 🌐 Deployment
 
-### ✅ Completed
-- [x] Project structure
-- [x] HTML entry point (index.html)
-- [x] Main App component
-- [x] Global styles
-- [x] Emission factors database
+### Architecture
 
-### 🚧 In Progress
-- [ ] Component implementations (next step)
-- [ ] PDF parser
-- [ ] LLM categorizer
-- [ ] Emission calculator
-- [ ] Charts
+The app uses a **two-part deployment**:
+1. **Frontend** → GitHub Pages (static files)
+2. **Backend Proxy** → Vercel (serverless function)
 
-### 📅 Upcoming
-- [ ] Testing with real statements
-- [ ] Error handling
-- [ ] Deployment
+This is necessary because:
+- GitHub Pages only serves static files (no Node.js)
+- Anthropic API blocks direct browser requests (CORS)
+- Proxy server handles API calls server-side
+
+### Deploy Frontend to GitHub Pages
+
+1. **Push to GitHub:**
+   ```bash
+   git add .
+   git commit -m "Deploy to GitHub Pages"
+   git push origin main
+   ```
+
+2. **Configure GitHub Actions:**
+   - Go to repository Settings → Secrets and variables → Actions
+   - Add secrets:
+     - `REACT_APP_CLAUDE_API_KEY` (your API key)
+     - `REACT_APP_PROXY_URL` (your Vercel proxy URL)
+     - `REACT_APP_USE_PROXY` = `true`
+
+3. **GitHub Actions will:**
+   - Build the React app
+   - Deploy to GitHub Pages automatically
+   - Use the proxy URL from secrets
+
+### Deploy Proxy Server to Vercel
+
+1. **Install Vercel CLI:**
+   ```bash
+   npm install -g vercel
+   ```
+
+2. **Login and Deploy:**
+   ```bash
+   vercel login
+   vercel
+   ```
+
+3. **Add Environment Variable:**
+   - Go to Vercel Dashboard → Your Project → Settings → Environment Variables
+   - Add: `CLAUDE_API_KEY` = your API key
+   - Apply to: Production, Preview, Development
+
+4. **Get Your Proxy URL:**
+   After deployment, Vercel gives you a URL like:
+   ```
+   https://carbon-calculator-proxy.vercel.app
+   ```
+   
+   Your proxy endpoint:
+   ```
+   https://carbon-calculator-proxy.vercel.app/api/categorize
+   ```
+
+5. **Update GitHub Secrets:**
+   - Add `REACT_APP_PROXY_URL` = your Vercel URL
+
+### Verify Deployment
+
+1. **Check GitHub Actions:**
+   - Go to repository → Actions
+   - Verify build succeeded
+   - Check "Verify secrets" step shows proxy URL
+
+2. **Test Live Site:**
+   - Visit: https://onsenix12.github.io/carbon-calculator
+   - Open browser console (F12)
+   - Look for: `🔧 LLM Configuration: { USE_PROXY: true, ... }`
+   - Upload a PDF and verify LLM categorization works
 
 ## 🔒 Privacy & Security
 
-**Client-Side Only**:
-- All PDF processing happens in browser
-- No data uploaded to servers
-- Only merchant names sent to Claude API
+**Client-Side Processing:**
+- All PDF processing happens in your browser
+- No transaction data uploaded to servers
+- Only merchant names sent to Claude API (for categorization)
 
-**Never Extracted**:
+**Never Extracted:**
 - ❌ Card numbers
 - ❌ Account numbers
 - ❌ Addresses
 - ❌ Customer IDs
+- ❌ NRIC numbers
 
-**Safe to Extract**:
+**Safe to Extract:**
 - ✅ Transaction dates
-- ✅ Merchant names
+- ✅ Merchant names (cleaned)
 - ✅ Amounts
+
+**API Security:**
+- API key stored securely in Vercel (not exposed to browser)
+- Proxy only accepts POST requests
+- CORS enabled for GitHub Pages domain only
 
 ## 📊 Data Sources
 
 - **SEFR**: Singapore Emission Factors Registry
-- **EMA**: Energy Market Authority (electricity grid factor)
+- **EMA**: Energy Market Authority (electricity grid factor: 0.4120 kg CO₂e/kWh)
 - **UK DEFRA**: UK Government GHG Conversion Factors 2025
 - **Research**: Peer-reviewed spend-based factors
+
+## 🐛 Troubleshooting
+
+### LLM Not Working (CORS Errors)
+
+**Symptoms:**
+- Console shows: `CORS error detected`
+- `LLM successes: 0`
+- High uncategorized percentage
+
+**Solutions:**
+1. **Local Development:**
+   - Make sure proxy server is running: `npm run proxy`
+   - Verify `.env` has `REACT_APP_USE_PROXY=true`
+   - Restart React app after changing `.env`
+
+2. **Production:**
+   - Verify `REACT_APP_PROXY_URL` is set in GitHub Secrets
+   - Check Vercel proxy is deployed and accessible
+   - Verify `CLAUDE_API_KEY` is set in Vercel
+
+### Proxy Server Not Starting
+
+**Check:**
+- Port 3001 is not in use: `netstat -ano | findstr :3001`
+- `.env` file exists with `CLAUDE_API_KEY`
+- Dependencies installed: `npm install`
+
+### PDF Parsing Issues
+
+**If no transactions found:**
+- Verify PDF is a valid DBS credit card statement
+- Check browser console for parsing errors
+- Ensure PDF is not password-protected
+
+### Build Errors
+
+**Common issues:**
+- Missing environment variables → Add to GitHub Secrets
+- Import errors → Run `npm install` again
+- Build timeout → Check GitHub Actions logs
+
+## 💰 API Costs
+
+- **Per transaction**: ~$0.0003
+- **100 transactions**: ~$0.03
+- **1000 transactions**: ~$0.30
+
+Very affordable for personal use!
 
 ## 🧪 Testing
 
@@ -132,6 +336,9 @@ npm test
 
 # Build for production
 npm run build
+
+# Test proxy server
+curl http://localhost:3001/health
 ```
 
 ## 📝 Assignment Details
@@ -140,42 +347,35 @@ npm run build
 **Institution**: Singapore Management University (SMU)  
 **School**: School of Computing and Information Systems (SCIS)  
 **Program**: Master of IT in Business  
-**Due Date**: December 9, 2024  
+**Due Date**: December 9, 2024
 
-## 👨‍💻 Development
+## 🛠️ Tech Stack
 
-**Tech Stack**:
-- React 18
-- PDF.js (PDF parsing)
-- Claude API (AI categorization)
-- Recharts (visualization)
+- **Frontend**: React 18, Recharts, PDF.js
+- **Backend**: Vercel Serverless Functions
+- **AI**: Claude API (Anthropic)
+- **Deployment**: GitHub Pages + Vercel
+- **Language**: JavaScript (ES6+)
 
-**Browser Support**:
+## 🌐 Browser Support
+
 - Chrome 90+
 - Firefox 88+
 - Safari 14+
 - Edge 90+
 
-## 🌐 Deployment
-
-The app is deployed to **GitHub Pages** with a **Vercel proxy server** for LLM API access:
-
-- **Frontend**: https://onsenix12.github.io/carbon-calculator
-- **API Proxy**: https://carbon-calculator-proxy.vercel.app/api/categorize
-
-The proxy server handles Anthropic API requests to avoid CORS issues when accessing from GitHub Pages.
-
-## 🐛 Known Issues
-
-- PDF parser not yet implemented
-- LLM integration pending API key
-- Charts placeholder only
-
 ## 📞 Support
 
-For issues or questions, contact via course portal.
+For issues or questions:
+- Check the Troubleshooting section above
+- Review browser console for error messages
+- Check GitHub Actions logs for deployment issues
+
+## 📄 License
+
+This project is for educational purposes (IS626 course assignment).
 
 ---
 
 **Last Updated**: 2025-01-23  
-**Version**: 0.1.0 (Initial Setup)
+**Version**: 1.0.0

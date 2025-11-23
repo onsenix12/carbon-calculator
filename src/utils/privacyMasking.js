@@ -15,6 +15,8 @@
  * Privacy Principle: Mask early, mask always
  */
 
+import logger from './logger';
+
 /**
  * Mask credit card numbers
  * Pattern: 1234 5678 9012 3456 → **** **** **** 3456
@@ -213,7 +215,7 @@ export const maskCreditCardNumbers = (text) => {
    * @returns {Object} - { maskedText, maskingReport }
    */
   export const maskAllSensitiveData = (text) => {
-    console.log('🔒 Starting privacy masking...');
+    logger.debug('Starting privacy masking...');
   
     let maskedText = text;
     const maskingReport = {
@@ -246,15 +248,15 @@ export const maskCreditCardNumbers = (text) => {
   
     const totalMasked = Object.values(maskingReport).reduce((a, b) => a + b, 0);
   
-    console.log('✅ Privacy masking complete');
-    console.log(`   Masked ${totalMasked} sensitive data items:`);
-    console.log(`   - Card numbers: ${maskingReport.cardNumbers}`);
-    console.log(`   - Account numbers: ${maskingReport.accountNumbers}`);
-    console.log(`   - Customer IDs: ${maskingReport.customerIDs}`);
-    console.log(`   - NRICs: ${maskingReport.nrics}`);
-    console.log(`   - Postal codes: ${maskingReport.postalCodes}`);
-    console.log(`   - Phone numbers: ${maskingReport.phoneNumbers}`);
-    console.log(`   - Reference numbers: ${maskingReport.referenceNumbers}`);
+    logger.success('Privacy masking complete');
+    logger.debug(`Masked ${totalMasked} sensitive data items:`);
+    logger.debug(`  - Card numbers: ${maskingReport.cardNumbers}`);
+    logger.debug(`  - Account numbers: ${maskingReport.accountNumbers}`);
+    logger.debug(`  - Customer IDs: ${maskingReport.customerIDs}`);
+    logger.debug(`  - NRICs: ${maskingReport.nrics}`);
+    logger.debug(`  - Postal codes: ${maskingReport.postalCodes}`);
+    logger.debug(`  - Phone numbers: ${maskingReport.phoneNumbers}`);
+    logger.debug(`  - Reference numbers: ${maskingReport.referenceNumbers}`);
   
     return {
       maskedText,
@@ -294,10 +296,10 @@ export const maskCreditCardNumbers = (text) => {
     const isSafe = violations.length === 0;
   
     if (!isSafe) {
-      console.error('⚠️  PRIVACY VIOLATION: Sensitive data detected in text!');
-      violations.forEach(v => console.error(`   - ${v}`));
+      logger.error('PRIVACY VIOLATION: Sensitive data detected in text!');
+      violations.forEach(v => logger.error(`  - ${v}`));
     } else {
-      console.log('✅ Privacy validation passed: No sensitive data detected');
+      logger.success('Privacy validation passed: No sensitive data detected');
     }
   
     return { isSafe, violations };

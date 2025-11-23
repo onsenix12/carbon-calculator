@@ -11,6 +11,9 @@ import { parsePDF } from './utils/pdfParser';
 import { parseDBSTransactions } from './utils/transactionParser';
 import { categorizeAllTransactions } from './utils/llmCategorizer';
 import { calculateFootprint } from './utils/emissionCalculator';
+import { isMonthMatch } from './utils/dateUtils';
+import logger from './utils/logger';
+import { PROGRESS } from './constants';
 import emissionFactors from './data/emissionFactors.json';
 
 function App() {
@@ -34,29 +37,29 @@ function App() {
     setProcessingProgress(0);
 
     try {
-      console.log('🚀 Starting processing pipeline...');
+      logger.info('Starting processing pipeline...');
       
       // Step 1: Parse PDF and extract transaction section
       setProcessingStep(0);
       setProcessingProgress(10);
-      console.log('Step 1: Parsing PDF...');
+      logger.step(1, 4, 'Parsing PDF...');
       const { transactionText } = await parsePDF(file);
       setProcessingProgress(25);
       
       // Step 2: Parse individual transactions
       setProcessingStep(1);
       setProcessingProgress(35);
-      console.log('Step 2: Parsing transactions...');
-      console.log('Transaction text sample (first 500 chars):', transactionText.substring(0, 500));
+      logger.step(2, 4, 'Parsing transactions...');
+      logger.debug(`Transaction text sample (first 500 chars): ${transactionText.substring(0, 500)}`);
       const parsedTransactions = parseDBSTransactions(transactionText);
       setProcessingProgress(50);
       
       if (parsedTransactions.length === 0) {
         // Provide more helpful error message with debugging info
-        console.error('❌ No transactions found. Debug info:');
-        console.error('   Transaction text length:', transactionText.length);
-        console.error('   First 1000 characters:', transactionText.substring(0, 1000));
-        console.error('   Looking for patterns like: "DD MMM MERCHANT AMOUNT"');
+        logger.error('No transactions found. Debug info:');
+        logger.debug(`Transaction text length: ${transactionText.length}`);
+        logger.debug(`First 1000 characters: ${transactionText.substring(0, 1000)}`);
+        logger.debug('Looking for patterns like: "DD MMM MERCHANT AMOUNT"');
         
         throw new Error(
           'No transactions found in the PDF. ' +
@@ -68,7 +71,7 @@ function App() {
       // Step 3: Categorize transactions using LLM (with keyword fallback)
       setProcessingStep(2);
       setProcessingProgress(55);
-      console.log('Step 3: Categorizing transactions...');
+      logger.step(3, 4, 'Categorizing transactions...');
       
       // Update progress during categorization (this is the longest step)
       const progressCallback = (current, total) => {
@@ -91,12 +94,12 @@ function App() {
       // Step 4: Calculate carbon footprint
       setProcessingStep(3);
       setProcessingProgress(95);
-      console.log('Step 4: Calculating emissions...');
+      logger.step(4, 4, 'Calculating emissions...');
       const calculatedResults = calculateFootprint(categorizedTransactions, emissionFactors);
       setProcessingProgress(100);
       
       // Step 5: Set results and show
-      console.log('✅ Processing complete!');
+      logger.success('Processing complete!');
       // Use transactions from results (they have emissions and factor calculated)
       // Store all data (unfiltered)
       setAllTransactions(calculatedResults.transactions);
@@ -107,7 +110,7 @@ function App() {
       setStep('results');
       
     } catch (err) {
-      console.error('❌ Error processing PDF:', err);
+      logger.error('Error processing PDF:', err);
       setError(err.message || 'Failed to process PDF. Please try again.');
       setStep('upload');
     } finally {
@@ -138,15 +141,7 @@ function App() {
       };
     }
 
-    // Filter transactions by month
-    const filtered = allTransactions.filter(transaction => {
-      if (!transaction.date) return false;
-      const parts = transaction.date.trim().split(/\s+/);
-      if (parts.length >= 2) {
-        return parts[1].toUpperCase() === selectedMonth;
-      }
-      return false;
-    });
+import { isMonthMatch } from './utils/dateUtils';
 
     // Recalculate results for filtered transactions
     if (filtered.length === 0) {
@@ -300,9 +295,6 @@ function App() {
               <button onClick={handleReset} className="btn btn-primary">
                 📄 Upload Another Statement
               </button>
-              {/* Future: Add export buttons */}
-              {/* <button className="btn btn-secondary">📊 Export to CSV</button> */}
-              {/* <button className="btn btn-secondary">📑 Export to PDF</button> */}
             </div>
           </div>
         )}

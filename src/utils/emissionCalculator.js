@@ -5,6 +5,11 @@
  * Uses Singapore-specific emission factors (SEFR)
  */
 
+import { parseTransactionDate, formatDate, MONTH_INDEX_MAP } from './dateUtils';
+import logger from './logger';
+import { CARBON_EQUIVALENTS, REDUCTION_PERCENTAGES, SINGAPORE_AVERAGES, VALIDATION } from '../constants';
+import { validateNonEmptyArray, validateEmissionFactors } from './validation';
+
 /**
  * Calculate emissions for all transactions
  * 
@@ -13,8 +18,12 @@
  * @returns {Object} - Complete results object
  */
 export const calculateFootprint = (categorizedTransactions, emissionFactors) => {
-    console.log('🧮 Calculating carbon footprint...');
-    console.log(`   Transactions: ${categorizedTransactions.length}`);
+    // Input validation
+    validateNonEmptyArray(categorizedTransactions, 'Categorized transactions');
+    validateEmissionFactors(emissionFactors);
+    
+    logger.info('Calculating carbon footprint...');
+    logger.debug(`Transactions: ${categorizedTransactions.length}`);
   
     const results = {
       totalEmissions: 0,
@@ -107,37 +116,15 @@ export const calculateFootprint = (categorizedTransactions, emissionFactors) => 
   
     // Calculate date range
     if (results.transactions.length > 0) {
-      const monthMap = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5,
-                         JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
       const currentYear = new Date().getFullYear();
       
       const validDates = results.transactions
         .map(t => {
-          try {
-            // Parse DD MMM format to Date
-            const parts = t.date.trim().split(/\s+/);
-            if (parts.length < 2) return null;
-            
-            const day = parseInt(parts[0]);
-            const monthStr = parts[1].toUpperCase();
-            const month = monthMap[monthStr];
-            
-            if (isNaN(day) || day < 1 || day > 31 || month === undefined) {
-              return null;
-            }
-            
-            const date = new Date(currentYear, month, day);
-            
-            // Validate the date is actually valid (handles cases like Feb 30)
-            if (date.getDate() !== day || date.getMonth() !== month) {
-              return null;
-            }
-            
-            return date;
-          } catch (e) {
-            console.warn(`Failed to parse date: ${t.date}`, e);
-            return null;
+          const date = parseTransactionDate(t.date, currentYear);
+          if (!date) {
+            console.warn(`Failed to parse date: ${t.date}`);
           }
+          return date;
         })
         .filter(date => date !== null && !isNaN(date.getTime()));
 
@@ -145,48 +132,18 @@ export const calculateFootprint = (categorizedTransactions, emissionFactors) => 
         const minDate = new Date(Math.min(...validDates.map(d => d.getTime())));
         const maxDate = new Date(Math.max(...validDates.map(d => d.getTime())));
 
-        // Format dates with proper error handling
-        const formatDate = (date) => {
-          try {
-            const formatted = date.toLocaleDateString('en-SG', { 
-              day: '2-digit', 
-              month: 'short', 
-              year: 'numeric' 
-            });
-            // Check if formatting returned "Invalid Date"
-            if (formatted === 'Invalid Date' || formatted.includes('Invalid')) {
-              // Fallback to manual formatting
-              const day = date.getDate().toString().padStart(2, '0');
-              const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                                 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-              const month = monthNames[date.getMonth()];
-              const year = date.getFullYear();
-              return `${day} ${month} ${year}`;
-            }
-            return formatted;
-          } catch (e) {
-            // Fallback formatting
-            const day = date.getDate().toString().padStart(2, '0');
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            const month = monthNames[date.getMonth()];
-            const year = date.getFullYear();
-            return `${day} ${month} ${year}`;
-          }
-        };
-
         results.metadata.dateRange = {
           start: formatDate(minDate),
           end: formatDate(maxDate)
         };
       } else {
-        console.warn('⚠️ No valid dates found in transactions, dateRange will be null');
+        logger.warn('No valid dates found in transactions, dateRange will be null');
       }
     }
   
-    console.log('✅ Calculation complete');
-    console.log(`   Total emissions: ${results.totalEmissions.toFixed(2)} kg CO2e`);
-    console.log(`   Categories with emissions: ${Object.values(results.byCategory).filter(v => v > 0).length}`);
+    logger.success('Calculation complete');
+    logger.info(`Total emissions: ${results.totalEmissions.toFixed(2)} kg CO2e`);
+    logger.debug(`Categories with emissions: ${Object.values(results.byCategory).filter(v => v > 0).length}`);
   
     return results;
   };
@@ -203,7 +160,7 @@ export const calculateFootprint = (categorizedTransactions, emissionFactors) => 
       ourTotal: Math.round(ourResults.totalEmissions),
       dbsTotal: dbsTotal,
       difference: Math.round(ourResults.totalEmissions - dbsTotal),
-      percentageDiff: Math.round(((ourResults.totalEmissions - dbsTotal) / dbsTotal) * 100),
+      percentageDiff: Math.round(((ourResults.totalEmissions - dbsTotal) / dbsTotal) * VALIDATION.PERCENTAGE_MULTIPLIER),
       analysis: ''
     };
   
@@ -256,7 +213,7 @@ export const calculateFootprint = (categorizedTransactions, emissionFactors) => 
         icon: results.byCategoryDetailed[category].icon,
         emissions: parseFloat(emissions.toFixed(2)),
         spending: results.byCategoryDetailed[category].spending,
-        percentage: parseFloat(((emissions / results.totalEmissions) * 100).toFixed(1)),
+        percentage: parseFloat(((emissions / results.totalEmissions) * VALIDATION.PERCENTAGE_MULTIPLIER).toFixed(1)),
         transactionCount: results.byCategoryDetailed[category].transactions.length
       }))
       .sort((a, b) => b.emissions - a.emissions);
@@ -271,17 +228,11 @@ export const calculateFootprint = (categorizedTransactions, emissionFactors) => 
    * @returns {Object} - Equivalent metrics
    */
   export const calculateEquivalents = (totalEmissions) => {
-    // Reference data:
-    // - 1 tree absorbs ~21.77 kg CO2/year
-    // - 1 laptop charge = ~0.257 kg CO2
-    // - 1 plastic bottle = ~82.8g CO2
-    // - 1 km by car = ~0.17 kg CO2
-  
     return {
-      trees: parseFloat((totalEmissions / 21.77).toFixed(1)),
-      laptopCharges: Math.round(totalEmissions / 0.257),
-      plasticBottles: Math.round(totalEmissions / 0.0828),
-      carKilometers: Math.round(totalEmissions / 0.17)
+      trees: parseFloat((totalEmissions / CARBON_EQUIVALENTS.TREE_ABSORPTION_KG_PER_YEAR).toFixed(1)),
+      laptopCharges: Math.round(totalEmissions / CARBON_EQUIVALENTS.LAPTOP_CHARGE_KG),
+      plasticBottles: Math.round(totalEmissions / CARBON_EQUIVALENTS.PLASTIC_BOTTLE_KG),
+      carKilometers: Math.round(totalEmissions / CARBON_EQUIVALENTS.CAR_KM_KG)
     };
   };
   
@@ -305,7 +256,7 @@ export const calculateFootprint = (categorizedTransactions, emissionFactors) => 
               icon: cat.icon,
               currentEmissions: cat.emissions,
               suggestion: 'Consider eating at hawker centers more often instead of restaurants',
-              potentialSaving: parseFloat((cat.emissions * 0.20).toFixed(2)),
+              potentialSaving: parseFloat((cat.emissions * REDUCTION_PERCENTAGES.FOOD_DINING).toFixed(2)),
               explanation: 'Hawker food has lower emissions due to local sourcing and simpler preparation'
             });
             break;
@@ -316,7 +267,7 @@ export const calculateFootprint = (categorizedTransactions, emissionFactors) => 
               icon: cat.icon,
               currentEmissions: cat.emissions,
               suggestion: 'Use MRT/bus instead of Grab/taxi when possible',
-              potentialSaving: parseFloat((cat.emissions * 0.60).toFixed(2)),
+              potentialSaving: parseFloat((cat.emissions * REDUCTION_PERCENTAGES.TRANSPORT).toFixed(2)),
               explanation: 'Public transport has 85% lower emissions per passenger-km than private cars'
             });
             break;
@@ -327,7 +278,7 @@ export const calculateFootprint = (categorizedTransactions, emissionFactors) => 
               icon: cat.icon,
               currentEmissions: cat.emissions,
               suggestion: 'Buy second-hand or reduce impulse purchases',
-              potentialSaving: parseFloat((cat.emissions * 0.30).toFixed(2)),
+              potentialSaving: parseFloat((cat.emissions * REDUCTION_PERCENTAGES.SHOPPING).toFixed(2)),
               explanation: 'Manufacturing new goods has high embedded carbon'
             });
             break;
@@ -338,7 +289,7 @@ export const calculateFootprint = (categorizedTransactions, emissionFactors) => 
               icon: cat.icon,
               currentEmissions: cat.emissions,
               suggestion: 'Consider regional travel instead of long-haul flights',
-              potentialSaving: parseFloat((cat.emissions * 0.40).toFixed(2)),
+              potentialSaving: parseFloat((cat.emissions * REDUCTION_PERCENTAGES.TRAVEL).toFixed(2)),
               explanation: 'Flights are the highest-emission activity per dollar spent'
             });
             break;
@@ -349,7 +300,7 @@ export const calculateFootprint = (categorizedTransactions, emissionFactors) => 
               icon: cat.icon,
               currentEmissions: cat.emissions,
               suggestion: 'Reduce consumption in this category',
-              potentialSaving: parseFloat((cat.emissions * 0.15).toFixed(2)),
+              potentialSaving: parseFloat((cat.emissions * REDUCTION_PERCENTAGES.DEFAULT).toFixed(2)),
               explanation: 'Any reduction helps lower your carbon footprint'
             });
         }
@@ -366,20 +317,14 @@ export const calculateFootprint = (categorizedTransactions, emissionFactors) => 
    * @returns {Object} - Comparison data
    */
   export const compareWithSingaporeAverage = (totalEmissions) => {
-    // Singapore per capita average: ~832 kg CO2e/month (from DBS data)
-    // Singapore target: ~273 kg CO2e/month
-    
-    const sgAverage = 832;
-    const sgTarget = 273;
-  
     return {
       yourEmissions: totalEmissions,
-      singaporeAverage: sgAverage,
-      singaporeTarget: sgTarget,
-      vsAverage: parseFloat((((totalEmissions - sgAverage) / sgAverage) * 100).toFixed(1)),
-      vsTarget: parseFloat((((totalEmissions - sgTarget) / sgTarget) * 100).toFixed(1)),
-      status: totalEmissions < sgTarget ? 'excellent' : 
-              totalEmissions < sgAverage ? 'good' : 'above_average'
+      singaporeAverage: SINGAPORE_AVERAGES.PER_CAPITA_MONTHLY,
+      singaporeTarget: SINGAPORE_AVERAGES.TARGET_MONTHLY,
+      vsAverage: parseFloat((((totalEmissions - SINGAPORE_AVERAGES.PER_CAPITA_MONTHLY) / SINGAPORE_AVERAGES.PER_CAPITA_MONTHLY) * VALIDATION.PERCENTAGE_MULTIPLIER).toFixed(1)),
+      vsTarget: parseFloat((((totalEmissions - SINGAPORE_AVERAGES.TARGET_MONTHLY) / SINGAPORE_AVERAGES.TARGET_MONTHLY) * VALIDATION.PERCENTAGE_MULTIPLIER).toFixed(1)),
+      status: totalEmissions < SINGAPORE_AVERAGES.TARGET_MONTHLY ? 'excellent' : 
+              totalEmissions < SINGAPORE_AVERAGES.PER_CAPITA_MONTHLY ? 'good' : 'above_average'
     };
   };
   

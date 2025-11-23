@@ -9,15 +9,17 @@
  * Cost: ~$0.0003 per transaction (100 transactions = ~$0.03)
  */
 
+import { buildClaudePrompt, CLAUDE_MODEL, CLAUDE_API_CONFIG, API_CONFIG } from '../constants';
+import { ValidationError, APIError, NetworkError, ERROR_CODES, handleAPIResponse, isNetworkError } from './errors';
+
 // Use proxy server in development, direct API in production
 // Set REACT_APP_USE_PROXY=true in .env to use local proxy server
-const USE_PROXY = process.env.REACT_APP_USE_PROXY === 'true';
-const PROXY_URL = process.env.REACT_APP_PROXY_URL || 'http://localhost:3001/api/categorize';
-const CLAUDE_API_URL = USE_PROXY ? PROXY_URL : 'https://api.anthropic.com/v1/messages';
-const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
+const USE_PROXY = process.env[API_CONFIG.USE_PROXY_ENV_VAR] === 'true';
+const PROXY_URL = process.env[API_CONFIG.PROXY_ENV_VAR] || API_CONFIG.PROXY_DEFAULT_URL;
+const CLAUDE_API_URL = USE_PROXY ? PROXY_URL : API_CONFIG.CLAUDE_API_BASE_URL;
 
 // Debug logging
-console.log('🔧 LLM Configuration:', {
+logger.debug('LLM Configuration:', {
   USE_PROXY,
   PROXY_URL,
   CLAUDE_API_URL,
@@ -34,7 +36,7 @@ const getAPIKey = () => {
   const apiKey = process.env.REACT_APP_CLAUDE_API_KEY;
   
   if (!apiKey || apiKey === 'your_api_key_here') {
-    throw new Error(
+    throw new ValidationError(
       'Claude API key not configured. ' +
       'Please add REACT_APP_CLAUDE_API_KEY to your .env file. ' +
       'Get your API key from: https://console.anthropic.com/'
@@ -52,9 +54,10 @@ const getAPIKey = () => {
  * @returns {Promise<Object>} - { category, subcategory, confidence }
  */
 export const categorizeMerchantWithLLM = async (merchantName, categories) => {
-  // Validate merchantName before making API call
-  if (!merchantName || merchantName.trim() === '') {
-    throw new Error('merchantName is required and cannot be empty');
+  // Input validation
+  validateNonEmpty(merchantName, 'Merchant name');
+  if (!categories || typeof categories !== 'object') {
+    throw new ValidationError('Categories must be an object');
   }
 
   // If using proxy, send simplified request
@@ -73,8 +76,10 @@ export const categorizeMerchantWithLLM = async (merchantName, categories) => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          `Proxy error (${response.status}): ${errorData.error || response.statusText}`
+        throw new APIError(
+          errorData.error || response.statusText || 'Proxy request failed',
+          response.status,
+          errorData
         );
       }
 
@@ -86,7 +91,7 @@ export const categorizeMerchantWithLLM = async (merchantName, categories) => {
         rawResponse: data.rawResponse
       };
     } catch (error) {
-      console.error('LLM categorization failed for:', merchantName, error);
+      logger.error(`LLM categorization failed for: ${merchantName}`, error);
       throw error;
     }
   }
@@ -99,47 +104,20 @@ export const categorizeMerchantWithLLM = async (merchantName, categories) => {
     .filter(c => c !== 'uncategorized')
     .join(', ');
 
-  const prompt = `You are a transaction categorizer for carbon footprint calculation in Singapore.
-
-Merchant: "${merchantName}"
-
-Available categories: ${categoryList}
-
-Task: Return ONLY the category name that best matches this merchant.
-If uncertain, return "uncategorized".
-
-Rules:
-- food_dining: Restaurants, cafes, food courts, hawkers, food delivery
-- transport: Grab, taxis, MRT, buses, petrol stations, ride-hailing, public transport
-- utilities: Electricity, water, gas bills
-- shopping: Retail stores, supermarkets, clothing, electronics
-- entertainment: Netflix, Spotify, gyms, cinemas, games
-- travel: Hotels, flights, accommodation
-
-Examples:
-- "GRAB" → transport
-- "PUBLIC TRANSPORT" → transport
-- "BUS/MRT" → transport
-- "KOUFU" → food_dining
-- "NTUC FAIRPRICE" → shopping
-- "SP SERVICES" → utilities
-- "NETFLIX" → entertainment
-- "DON DON DONKI" → shopping
-
-Response (one word only):`;
+  const prompt = buildClaudePrompt(merchantName, categoryList);
 
   try {
     const response = await fetch(CLAUDE_API_URL, {
       method: 'POST',
       headers: {
         'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
+        'anthropic-version': CLAUDE_API_CONFIG.anthropic_version,
         'content-type': 'application/json'
       },
       body: JSON.stringify({
-        model: CLAUDE_MODEL,
-        max_tokens: 20,
-        temperature: 0,
+        model: CLAUDE_API_CONFIG.model,
+        max_tokens: CLAUDE_API_CONFIG.max_tokens,
+        temperature: CLAUDE_API_CONFIG.temperature,
         messages: [{
           role: 'user',
           content: prompt
@@ -149,8 +127,10 @@ Response (one word only):`;
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        `Claude API error (${response.status}): ${errorData.error?.message || response.statusText}`
+      throw new APIError(
+        errorData.error?.message || errorData.error || response.statusText || 'Claude API request failed',
+        response.status,
+        errorData
       );
     }
 
@@ -174,16 +154,16 @@ Response (one word only):`;
     }
 
   } catch (error) {
-    // Check if this is a CORS error
-    const isCorsError = error.message.includes('CORS') || 
-                       error.message.includes('Failed to fetch') ||
-                       error.message.includes('NetworkError') ||
-                       error.name === 'TypeError';
-    
-    if (isCorsError) {
-      console.warn('⚠️ CORS error detected - LLM API cannot be accessed from browser. Using keyword matching instead.');
+    // Check if this is a network/CORS error
+    if (isNetworkError(error)) {
+      console.warn('⚠️ CORS/Network error detected - LLM API cannot be accessed from browser. Using keyword matching instead.');
       // Return a special flag to indicate CORS error
-      throw new Error('CORS_BLOCKED');
+      throw new NetworkError('CORS_BLOCKED', { originalError: error.message });
+    }
+    
+    // If it's an API error, re-throw it
+    if (error instanceof APIError) {
+      throw error;
     }
     
     console.error('LLM categorization failed for:', merchantName, error);
@@ -233,7 +213,7 @@ export const categorizeMerchantWithKeywords = (merchantName, emissionFactors) =>
   return {
     category: 'uncategorized',
     subcategory: 'default',
-    factor: 0.50,
+    factor: LLM_CONFIG.DEFAULT_UNCATEGORIZED_FACTOR,
     confidence: 'very_low',
     method: 'fallback'
   };
@@ -277,9 +257,13 @@ export const categorizeAllTransactions = async (
   emissionFactors,
   options = { useLLM: true, batchSize: 5, onProgress: null }
 ) => {
-  console.log('🤖 Categorizing transactions...');
-  console.log(`   Total transactions: ${transactions.length}`);
-  console.log(`   Method: ${options.useLLM ? 'LLM (Claude API)' : 'Keyword matching'}`);
+  // Input validation
+  validateNonEmptyArray(transactions, 'Transactions');
+  validateEmissionFactors(emissionFactors);
+  
+  logger.info('Categorizing transactions...');
+  logger.debug(`Total transactions: ${transactions.length}`);
+  logger.debug(`Method: ${options.useLLM ? 'LLM (Claude API)' : 'Keyword matching'}`);
 
   const categorized = [];
   let llmSuccessCount = 0;
@@ -293,7 +277,7 @@ export const categorizeAllTransactions = async (
   try {
     getAPIKey();
   } catch (error) {
-    console.warn('⚠️  Claude API key not configured, using keyword matching');
+    logger.warn('Claude API key not configured, using keyword matching');
     useLLM = false;
   }
 
@@ -351,18 +335,18 @@ export const categorizeAllTransactions = async (
           }
         }
 
-        // Rate limiting: Wait 100ms between LLM calls
+        // Rate limiting: Wait between LLM calls
         if (i < transactions.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, LLM_CONFIG.RATE_LIMIT_DELAY_MS));
         }
 
       } catch (error) {
         // Check if this is a CORS error
-        if (error.message === 'CORS_BLOCKED') {
+        if (error instanceof NetworkError && error.message === 'CORS_BLOCKED') {
           corsDetected = true;
-          console.warn('⚠️  CORS error detected - Anthropic API cannot be accessed directly from browser.');
-          console.warn('   Switching to keyword matching for all remaining transactions.');
-          console.warn('   Note: To use LLM categorization, you need a backend proxy server.');
+          logger.warn('CORS error detected - Anthropic API cannot be accessed directly from browser.');
+          logger.warn('Switching to keyword matching for all remaining transactions.');
+          logger.warn('Note: To use LLM categorization, you need a backend proxy server.');
         }
         
         // LLM failed, use keyword fallback
@@ -395,24 +379,24 @@ export const categorizeAllTransactions = async (
 
     // Progress logging and callback every 10 transactions
     if ((i + 1) % 10 === 0) {
-      console.log(`   Processed ${i + 1}/${transactions.length} transactions...`);
+      logger.progress(i + 1, transactions.length, 'Processed');
       if (options.onProgress) {
         options.onProgress(i + 1, transactions.length);
       }
     }
   }
 
-  console.log('✅ Categorization complete');
+  logger.success('Categorization complete');
   if (corsDetected) {
-    console.log('   ⚠️  Note: CORS blocked LLM API access - used keyword matching only');
-    console.log('   To use LLM categorization, set up a backend proxy server');
+    logger.warn('Note: CORS blocked LLM API access - used keyword matching only');
+    logger.warn('To use LLM categorization, set up a backend proxy server');
   }
-  console.log(`   LLM successes: ${llmSuccessCount}`);
-  console.log(`   Keyword matches: ${keywordCount}`);
-  console.log(`   Uncategorized: ${uncategorizedCount}`);
+  logger.debug(`LLM successes: ${llmSuccessCount}`);
+  logger.debug(`Keyword matches: ${keywordCount}`);
+  logger.debug(`Uncategorized: ${uncategorizedCount}`);
   
-  const accuracy = ((llmSuccessCount + keywordCount) / transactions.length * 100).toFixed(1);
-  console.log(`   Overall accuracy: ${accuracy}%`);
+  const accuracy = ((llmSuccessCount + keywordCount) / transactions.length * VALIDATION.PERCENTAGE_MULTIPLIER).toFixed(1);
+  logger.info(`Overall accuracy: ${accuracy}%`);
 
   // Call progress callback at the end
   if (options.onProgress) {
@@ -429,13 +413,9 @@ export const categorizeAllTransactions = async (
  * @returns {Object} - { estimatedCost, totalTokens }
  */
 export const estimateAPICost = (transactionCount) => {
-  // Rough estimates:
-  // - Input: ~100 tokens per request
-  // - Output: ~10 tokens per request
-  // - Claude Sonnet 4: $3/million input, $15/million output
-
-  const inputTokensPerRequest = 100;
-  const outputTokensPerRequest = 10;
+  // Rough estimates based on LLM_CONFIG constants
+  const inputTokensPerRequest = LLM_CONFIG.TOKENS_PER_REQUEST.INPUT;
+  const outputTokensPerRequest = LLM_CONFIG.TOKENS_PER_REQUEST.OUTPUT;
 
   const totalInputTokens = transactionCount * inputTokensPerRequest;
   const totalOutputTokens = transactionCount * outputTokensPerRequest;

@@ -1,12 +1,24 @@
 import React from 'react';
+import { validateFileType } from '../utils/validation';
+import { ValidationError } from '../utils/errors';
+import { FILE_CONFIG } from '../constants';
 
 const FileUpload = ({ onFileSelect, loading }) => {
   const handleFileChange = (event) => {
     const file = event.target.files[0];
-    if (file && file.type === 'application/pdf') {
+    if (!file) {
+      return;
+    }
+    
+    try {
+      validateFileType(file, FILE_CONFIG.ALLOWED_TYPES);
       onFileSelect(file);
-    } else {
-      alert('Please select a valid PDF file');
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        alert(error.message);
+      } else {
+        alert('Please select a valid PDF file');
+      }
     }
   };
 

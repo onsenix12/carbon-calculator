@@ -1,19 +1,20 @@
 import React from 'react';
+import { COMPARISON_THRESHOLDS, VALIDATION } from '../constants';
 
 const ComparisonView = ({ ourResults, dbsTotal }) => {
   if (!ourResults || !dbsTotal) return null;
 
   const ourTotal = Math.round(ourResults.totalEmissions);
   const difference = ourTotal - dbsTotal;
-  const percentageDiff = Math.round((difference / dbsTotal) * 100);
-  const withinRange = Math.abs(percentageDiff) <= 20;
+  const percentageDiff = Math.round((difference / dbsTotal) * VALIDATION.PERCENTAGE_MULTIPLIER);
+  const withinRange = Math.abs(percentageDiff) <= COMPARISON_THRESHOLDS.GOOD_MATCH_PERCENT;
 
   // Determine accuracy status
   const getAccuracyStatus = () => {
     const absDiff = Math.abs(percentageDiff);
-    if (absDiff <= 10) return { label: 'Excellent Match', color: 'excellent', icon: '🎯' };
-    if (absDiff <= 20) return { label: 'Good Match', color: 'good', icon: '✓' };
-    if (absDiff <= 30) return { label: 'Moderate Difference', color: 'moderate', icon: '⚠' };
+    if (absDiff <= COMPARISON_THRESHOLDS.EXCELLENT_MATCH_PERCENT) return { label: 'Excellent Match', color: 'excellent', icon: '🎯' };
+    if (absDiff <= COMPARISON_THRESHOLDS.GOOD_MATCH_PERCENT) return { label: 'Good Match', color: 'good', icon: '✓' };
+    if (absDiff <= COMPARISON_THRESHOLDS.MODERATE_DIFF_PERCENT) return { label: 'Moderate Difference', color: 'moderate', icon: '⚠' };
     return { label: 'Significant Difference', color: 'poor', icon: '⚠️' };
   };
 
@@ -144,7 +145,7 @@ const ComparisonView = ({ ourResults, dbsTotal }) => {
                 .sort(([, a], [, b]) => b - a)
                 .map(([categoryKey, emissions]) => {
                   const categoryInfo = ourResults.byCategoryDetailed[categoryKey];
-                  const percentage = ((emissions / ourResults.totalEmissions) * 100).toFixed(1);
+                  const percentage = ((emissions / ourResults.totalEmissions) * VALIDATION.PERCENTAGE_MULTIPLIER).toFixed(1);
                   return (
                     <div key={categoryKey} className="category-breakdown-item">
                       <div className="category-breakdown-header">

@@ -9,6 +9,10 @@
  */
 
 import * as pdfjsLib from 'pdfjs-dist';
+import { ParseError } from './errors';
+import logger from './logger';
+import { validateFileType, validateFileSize } from './validation';
+import { FILE_CONFIG } from '../constants';
 
 // Configure PDF.js worker
 // The worker file should be in public/ folder
@@ -22,9 +26,13 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL}/pdf.worker.m
  * @throws {Error} - If PDF parsing fails
  */
 export const extractTextFromPDF = async (file) => {
+  // Input validation
+  validateFileType(file, FILE_CONFIG.ALLOWED_TYPES);
+  validateFileSize(file, FILE_CONFIG.MAX_SIZE_MB);
+  
   try {
-    console.log('📄 Starting PDF extraction...');
-    console.log('   File:', file.name, '|', (file.size / 1024).toFixed(2), 'KB');
+    logger.info('Starting PDF extraction...');
+    logger.debug(`File: ${file.name} | ${(file.size / 1024).toFixed(2)} KB`);
 
     // Convert file to ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
@@ -33,7 +41,7 @@ export const extractTextFromPDF = async (file) => {
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
     const pdf = await loadingTask.promise;
     
-    console.log('   Pages:', pdf.numPages);
+    logger.debug(`Pages: ${pdf.numPages}`);
 
     // Extract text from all pages
     let fullText = '';
@@ -49,26 +57,26 @@ export const extractTextFromPDF = async (file) => {
       
       fullText += pageText + '\n';
       
-      console.log(`   ✓ Page ${pageNum}/${pdf.numPages} extracted`);
+      logger.debug(`Page ${pageNum}/${pdf.numPages} extracted`);
     }
 
-    console.log('✅ PDF extraction complete');
-    console.log('   Total characters:', fullText.length);
+    logger.success('PDF extraction complete');
+    logger.debug(`Total characters: ${fullText.length}`);
 
     return fullText;
 
   } catch (error) {
-    console.error('❌ PDF extraction failed:', error);
+    logger.error('PDF extraction failed:', error);
     
     // Provide user-friendly error messages
     if (error.message.includes('Invalid PDF')) {
-      throw new Error('This file is not a valid PDF. Please upload a DBS credit card statement PDF.');
+      throw new ParseError('This file is not a valid PDF. Please upload a DBS credit card statement PDF.');
     } else if (error.message.includes('Password')) {
-      throw new Error('This PDF is password-protected. Please upload an unlocked PDF.');
+      throw new ParseError('This PDF is password-protected. Please upload an unlocked PDF.');
     } else if (error.message.includes('corrupted')) {
-      throw new Error('This PDF file appears to be corrupted. Please try downloading it again.');
+      throw new ParseError('This PDF file appears to be corrupted. Please try downloading it again.');
     } else {
-      throw new Error(`Failed to read PDF: ${error.message}`);
+      throw new ParseError(`Failed to read PDF: ${error.message}`, { originalError: error.message });
     }
   }
 };
@@ -84,9 +92,9 @@ export const extractTextFromPDF = async (file) => {
  * @throws {Error} - If markers not found
  */
 export const extractTransactionSection = (fullText) => {
-  console.log('🔍 Extracting transaction section...');
-  console.log('   Full text length:', fullText.length, 'characters');
-  console.log('   First 500 chars:', fullText.substring(0, 500));
+  logger.info('Extracting transaction section...');
+  logger.debug(`Full text length: ${fullText.length} characters`);
+  logger.debug(`First 500 chars: ${fullText.substring(0, 500)}`);
 
   // Try multiple possible start markers (DBS statements may vary)
   const startMarkers = [
@@ -114,21 +122,22 @@ export const extractTransactionSection = (fullText) => {
     const index = fullText.indexOf(marker);
     if (index !== -1) {
       startIndex = index;
-      console.log(`   ✓ Found start marker: "${marker}" at position ${index}`);
+      logger.debug(`Found start marker: "${marker}" at position ${index}`);
       break;
     }
   }
 
   if (startIndex === -1) {
-    console.error('   ❌ Could not find any start marker. Tried:', startMarkers);
-    console.error('   Sample text around potential locations:');
+    logger.error('Could not find any start marker. Tried:', startMarkers);
+    logger.debug('Sample text around potential locations:');
     // Show text around common locations
     const sampleStart = fullText.substring(0, Math.min(2000, fullText.length));
-    console.error('   First 2000 chars:', sampleStart);
-    throw new Error(
+    logger.debug(`First 2000 chars: ${sampleStart}`);
+    throw new ParseError(
       'Could not find transaction section. ' +
       'This might not be a DBS credit card statement, or the format has changed. ' +
-      'Check the browser console (F12) for more details.'
+      'Check the browser console (F12) for more details.',
+      { startMarkers, sampleText: fullText.substring(0, 2000) }
     );
   }
 
@@ -138,28 +147,28 @@ export const extractTransactionSection = (fullText) => {
     const index = textAfterStart.indexOf(marker);
     if (index !== -1) {
       endIndex = startIndex + index;
-      console.log(`   ✓ Found end marker: "${marker}" at position ${endIndex}`);
+      logger.debug(`Found end marker: "${marker}" at position ${endIndex}`);
       break;
     }
   }
 
   if (endIndex === -1) {
-    console.warn('   ⚠️ Could not find end marker. Will use end of document.');
-    console.warn('   Tried markers:', endMarkers);
+    logger.warn('Could not find end marker. Will use end of document.');
+    logger.debug('Tried markers:', endMarkers);
     // Use end of document as fallback
     endIndex = fullText.length;
   }
 
   if (endIndex <= startIndex) {
-    throw new Error('Transaction section markers are in wrong order. Statement format may have changed.');
+    throw new ParseError('Transaction section markers are in wrong order. Statement format may have changed.');
   }
 
   // Extract transaction section
   const transactionText = fullText.substring(startIndex, endIndex);
 
-  console.log('✅ Transaction section extracted');
-  console.log('   Length:', transactionText.length, 'characters');
-  console.log('   Position:', startIndex, '-', endIndex);
+  logger.success('Transaction section extracted');
+  logger.debug(`Length: ${transactionText.length} characters`);
+  logger.debug(`Position: ${startIndex} - ${endIndex}`);
 
   // Try to extract statement date for metadata
   const statementDateMatch = fullText.match(/STATEMENT DATE.*?(\d{2} [A-Z][a-z]{2} \d{4})/);
@@ -176,7 +185,7 @@ export const extractTransactionSection = (fullText) => {
     extractedAt: new Date().toISOString()
   };
 
-  console.log('   Metadata:', metadata);
+  logger.debug('Metadata:', metadata);
 
   return {
     transactionText,
@@ -219,10 +228,10 @@ export const validateNoSensitiveData = (text) => {
   const valid = warnings.length === 0;
 
   if (!valid) {
-    console.warn('🔒 Sensitive data detected in text (will be masked in next step):');
-    warnings.forEach(w => console.warn('   ' + w));
+    logger.warn('Sensitive data detected in text (will be masked in next step):');
+    warnings.forEach(w => logger.warn(`  ${w}`));
   } else {
-    console.log('✅ No sensitive data patterns detected');
+    logger.success('No sensitive data patterns detected');
   }
 
   return { valid, warnings };
@@ -240,9 +249,9 @@ export const validateNoSensitiveData = (text) => {
  * @returns {Promise<Object>} - { transactionText, metadata }
  */
 export const parsePDF = async (file) => {
-  console.log('═══════════════════════════════════════════════');
-  console.log('🚀 Starting PDF parsing process');
-  console.log('═══════════════════════════════════════════════');
+  logger.info('═══════════════════════════════════════════════');
+  logger.info('Starting PDF parsing process');
+  logger.info('═══════════════════════════════════════════════');
 
   // Step 1: Extract full text
   const fullText = await extractTextFromPDF(file);
@@ -253,9 +262,9 @@ export const parsePDF = async (file) => {
   // Step 3: Preliminary validation
   const validation = validateNoSensitiveData(transactionText);
 
-  console.log('═══════════════════════════════════════════════');
-  console.log('✅ PDF parsing complete');
-  console.log('═══════════════════════════════════════════════');
+  logger.info('═══════════════════════════════════════════════');
+  logger.success('PDF parsing complete');
+  logger.info('═══════════════════════════════════════════════');
 
   return {
     transactionText,

@@ -1,5 +1,6 @@
 import React from 'react';
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { CHART_CONFIG, VALIDATION } from '../constants';
 
 // Colors for different categories
 const COLORS = {
@@ -26,7 +27,7 @@ const CategoryPieChart = ({ data }) => {
         value: Math.round(emissions),
         icon: categoryDetail.icon,
         categoryKey: categoryKey,
-        percentage: ((emissions / data.totalEmissions) * 100).toFixed(1)
+        percentage: ((emissions / data.totalEmissions) * VALIDATION.PERCENTAGE_MULTIPLIER).toFixed(1)
       };
     })
     .filter(item => item.value > 0)  // Only show categories with emissions
@@ -40,8 +41,8 @@ const CategoryPieChart = ({ data }) => {
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
-    // Only show label if percentage is significant (>5%)
-    if (parseFloat(percentage) < 5) return null;
+    // Only show label if percentage is significant
+    if (parseFloat(percentage) < CHART_CONFIG.MIN_PERCENTAGE_FOR_LABEL) return null;
 
     // Get category key from the data - Recharts passes the data point
     const dataPoint = entry.payload || entry;
@@ -86,7 +87,7 @@ const CategoryPieChart = ({ data }) => {
     <div className="pie-chart-section">
       <h3>Emissions by Category</h3>
       
-      <ResponsiveContainer width="100%" height={400}>
+      <ResponsiveContainer width="100%" height={CHART_CONFIG.PIE_CHART_HEIGHT}>
         <PieChart>
           <Pie
             data={chartData}
@@ -119,7 +120,7 @@ const CategoryPieChart = ({ data }) => {
       {/* Category breakdown - Vertical Bar Chart */}
       <div className="category-breakdown">
         <h4>Detailed Breakdown</h4>
-        <ResponsiveContainer width="100%" height={400}>
+        <ResponsiveContainer width="100%" height={CHART_CONFIG.PIE_CHART_HEIGHT}>
           <BarChart
             data={chartData}
             layout="vertical"
