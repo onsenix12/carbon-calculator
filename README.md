@@ -490,13 +490,6 @@ npm run build
 curl http://localhost:3001/health
 ```
 
-## 📝 Assignment Details
-
-**Course**: IS626 - Digital Technologies & Sustainability  
-**Institution**: Singapore Management University (SMU)  
-**School**: School of Computing and Information Systems (SCIS)  
-**Program**: Master of IT in Business  
-**Due Date**: December 9, 2024
 
 ## 🛠️ Tech Stack
 
