@@ -11,7 +11,7 @@ This tool parses DBS credit card statements (PDF), categorizes transactions usin
 - 🤖 AI-powered transaction categorization (Claude API)
 - 🧮 Carbon footprint calculation using Singapore emission factors
 - 📊 Interactive charts and visualizations
-- 💬 Results-aware chatbot with action items and web search
+- 💬 Results-aware chatbot with action items, auto-detected or forced web search
 - 🔒 Privacy-first: All processing happens in your browser
 - 🌐 Production-ready deployment (GitHub Pages + Vercel proxy)
 
@@ -132,8 +132,8 @@ The calculator ships with an embedded chatbot so users can immediately ask quest
 ### Component & Utility Breakdown
 **CarbonChatbot (`src/components/CarbonChatbot.js`)**
 - Renders the chat surface (message history, typing indicator, error states) plus the input box and send button.
-- Tracks `messages`, `inputValue`, `isLoading`, `error`, `actionItems`, `showActionItems`, and `isSearching` to manage UI feedback.
-- Auto-scrolls to the latest exchange, supports quick question injection, and badges responses that relied on web search results.
+- Tracks `messages`, `inputValue`, `isLoading`, `error`, `actionItems`, `showActionItems`, `forceWebSearch`, and `isSearching` to manage UI feedback.
+- Auto-scrolls to the latest exchange, supports quick question injection, badges responses that relied on web search results, and exposes an “Always include web search” toggle for manual overrides.
 
 **QuestionButtons (`src/components/QuestionButtons.js`)**
 - Displays curated questions grouped under Quick Analysis, Reduction Strategies, and Sustainable Alternatives.
@@ -168,7 +168,7 @@ The calculator ships with an embedded chatbot so users can immediately ask quest
 - The serverless function also truncates conversation history (≈10 turns), extracts action items server-side for redundancy, and logs failures for observability.
 
 ### Web Search Workflow
-- Triggered only for carbon-related requests that require current or location-specific knowledge (keywords such as "latest", "programs", "initiatives", "incentives", "Singapore").
+- Triggered only for carbon-related requests that require current or location-specific knowledge (keywords such as "latest", "programs", "initiatives", "incentives", "Singapore"), or when users enable the manual “Always include web search” toggle.
 - Search query pattern: `"<user question> carbon emissions Singapore sustainability"`, limited to the top 3–5 relevant results.
 - Each result is summarized (`Title`, `Snippet`, `URL`) and appended to the Claude prompt plus a UI badge (`usedWebSearch`) so users know when external knowledge was referenced.
 - Web search API keys (Serper, Google, Tavily) are stored as environment variables on Vercel; failed searches fall back to the core dataset with a warning.
@@ -519,5 +519,5 @@ This project is for educational purposes (IS626 course assignment).
 
 ---
 
-**Last Updated**: 2025-01-23  
+**Last Updated**: 2025-11-24  
 **Version**: 1.0.0
