@@ -28,6 +28,7 @@ const CarbonChatbot = ({ results }) => {
   const [actionItems, setActionItems] = useState([]);
   const [usedWebSearch, setUsedWebSearch] = useState(false);
   const [showPromptSuggestions, setShowPromptSuggestions] = useState(false);
+  const [forceWebSearch, setForceWebSearch] = useState(false);
 
   const messageEndRef = useRef(null);
 
@@ -89,7 +90,8 @@ const CarbonChatbot = ({ results }) => {
       const response = await sendChatMessage(
         trimmedMessage,
         conversationHistory,
-        userDataContext
+        userDataContext,
+        forceWebSearch ? true : null
       );
 
       setActionItems(response.actionItems || []);
@@ -173,6 +175,17 @@ const CarbonChatbot = ({ results }) => {
         >
           {showPromptSuggestions ? 'Hide quick prompts' : 'Show quick prompts'}
         </button>
+      </div>
+
+      <div className="chatbot-toggle-row">
+        <label className="chatbot-toggle-option">
+          <input
+            type="checkbox"
+            checked={forceWebSearch}
+            onChange={(event) => setForceWebSearch(event.target.checked)}
+          />
+          <span>Always include web search for my questions</span>
+        </label>
       </div>
 
       {showPromptSuggestions && (

@@ -78,6 +78,8 @@ export const shouldUseWebSearch = (message) => {
   const lowerMessage = message.toLowerCase();
 
   const trendKeywords = ['latest', 'current', 'recent', 'update', 'news'];
+  const searchIntentKeywords = ['search', 'look up', 'lookup', 'find online', 'internet', 'google', 'web'];
+  const benchmarkKeywords = ['benchmark', 'target', 'goal', 'ideal', 'average', 'typical', 'standard'];
   const programKeywords = [
     'program',
     'initiative',
@@ -90,12 +92,22 @@ export const shouldUseWebSearch = (message) => {
     'regulation'
   ];
   const locationKeywords = ['singapore', 'sg', 'nea', 'lta', 'ema', 'gov', 'government'];
+  const carbonKeywords = ['carbon', 'emission', 'footprint', 'co2'];
 
   const hasTrendKeyword = trendKeywords.some(keyword => lowerMessage.includes(keyword));
+  const hasSearchIntent = searchIntentKeywords.some(keyword => lowerMessage.includes(keyword));
   const hasProgramKeyword = programKeywords.some(keyword => lowerMessage.includes(keyword));
   const hasLocationReference = locationKeywords.some(keyword => lowerMessage.includes(keyword));
+  const wantsBenchmarkData =
+    benchmarkKeywords.some(keyword => lowerMessage.includes(keyword)) &&
+    carbonKeywords.some(keyword => lowerMessage.includes(keyword));
 
-  return hasTrendKeyword || (hasProgramKeyword && hasLocationReference);
+  return (
+    hasTrendKeyword ||
+    hasSearchIntent ||
+    wantsBenchmarkData ||
+    (hasProgramKeyword && hasLocationReference)
+  );
 };
 
 /**
