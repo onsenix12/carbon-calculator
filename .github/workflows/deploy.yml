@@ -42,7 +42,6 @@ jobs:
             exit 1
           fi
           echo "✅ REACT_APP_PROXY_URL secret is set"
-          echo "Proxy URL: ${{ secrets.REACT_APP_PROXY_URL }}"
       
       - name: Build project
         env:
