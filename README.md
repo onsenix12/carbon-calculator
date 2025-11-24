@@ -11,6 +11,7 @@ This tool parses DBS credit card statements (PDF), categorizes transactions usin
 - 🤖 AI-powered transaction categorization (Claude API)
 - 🧮 Carbon footprint calculation using Singapore emission factors
 - 📊 Interactive charts and visualizations
+- 💬 Results-aware chatbot with action items and web search
 - 🔒 Privacy-first: All processing happens in your browser
 - 🌐 Production-ready deployment (GitHub Pages + Vercel proxy)
 
@@ -72,25 +73,31 @@ carbon-calculator/
 │   └── pdf.worker.min.js
 ├── src/
 │   ├── components/          # React components
-│   │   ├── FileUpload.js
-│   │   ├── ResultsSummary.js
-│   │   ├── TransactionList.js
+│   │   ├── ActionItemsPanel.js
+│   │   ├── CarbonChatbot.js
 │   │   ├── CategoryPieChart.js
 │   │   ├── ComparisonView.js
+│   │   ├── FileUpload.js
+│   │   ├── MethodologyInfo.js
 │   │   ├── MonthFilter.js
-│   │   └── MethodologyInfo.js
+│   │   ├── QuestionButtons.js
+│   │   ├── ResultsSummary.js
+│   │   └── TransactionList.js
 │   ├── utils/               # Utility functions
+│   │   ├── actionItemsExtractor.js
+│   │   ├── chatbotApi.js
+│   │   ├── chatbotQuestions.js
+│   │   ├── dateUtils.js
+│   │   ├── emissionCalculator.js
+│   │   ├── errors.js
+│   │   ├── llmCategorizer.js
+│   │   ├── logger.js
 │   │   ├── pdfParser.js
+│   │   ├── privacyMasking.js
 │   │   ├── transactionParser.js
 │   │   │   ├── strategies.js
 │   │   │   └── singleTransaction.js
-│   │   ├── privacyMasking.js
-│   │   ├── llmCategorizer.js
-│   │   ├── emissionCalculator.js
-│   │   ├── dateUtils.js
-│   │   ├── validation.js
-│   │   ├── errors.js
-│   │   └── logger.js
+│   │   └── validation.js
 │   ├── constants/           # Shared constants
 │   │   └── index.js
 │   ├── data/
@@ -99,8 +106,9 @@ carbon-calculator/
 │   ├── App.css
 │   ├── index.js
 │   └── index.css
-├── api/                     # Vercel serverless function
-│   └── categorize.js
+├── api/                     # Vercel serverless functions
+│   ├── categorize.js
+│   └── chatbot.js           # Claude + web search proxy
 ├── shared/                  # Shared between client and server
 │   └── constants.js
 ├── proxy-server.js          # Local development proxy
@@ -108,6 +116,147 @@ carbon-calculator/
 ├── vercel.json
 ├── .env                     # Environment variables (create this)
 └── README.md
+```
+
+## 🤖 Carbon Chatbot Feature
+
+The calculator ships with an embedded chatbot so users can immediately ask questions, compare categories, and walk away with action items rooted in their own footprint.
+
+### Requirements & Scope
+- Appears only after PDF processing once `results` (and optionally `transactions`) exist so every answer references the user's own footprint.
+- Powered by the Claude API via the `/api/chatbot` Vercel function and reuses the same LLM infrastructure as categorization.
+- Strict carbon/sustainability scope: the bot must decline unrelated questions and redirect users to emission topics.
+- Uses sanitized, aggregated emission data (totals, category breakdown, metadata) for grounding; sensitive transaction info never leaves the browser.
+- Includes pre-populated question chips, a web-search indicator, actionable checklists, and accessibility affordances (keyboard navigation, ARIA labels).
+
+### Component & Utility Breakdown
+**CarbonChatbot (`src/components/CarbonChatbot.js`)**
+- Renders the chat surface (message history, typing indicator, error states) plus the input box and send button.
+- Tracks `messages`, `inputValue`, `isLoading`, `error`, `actionItems`, `showActionItems`, and `isSearching` to manage UI feedback.
+- Auto-scrolls to the latest exchange, supports quick question injection, and badges responses that relied on web search results.
+
+**QuestionButtons (`src/components/QuestionButtons.js`)**
+- Displays curated questions grouped under Quick Analysis, Reduction Strategies, and Sustainable Alternatives.
+- Dynamically inserts prompts for the user's top emission categories (transport, food_dining, shopping, etc.).
+- Clicking a chip immediately sends the mapped prompt or pre-fills the input for editing.
+
+**ActionItemsPanel (`src/components/ActionItemsPanel.js`)**
+- Lists action items detected in Claude replies with checkboxes, completion state, and "clear all" handling.
+- Designed to sit beside/below the chat and will later support exporting or reminders.
+
+**Chatbot Utilities (`src/utils/*.js`)**
+- `chatbotApi.js`: exposes `sendChatMessage`, `buildUserDataContext`, `shouldUseWebSearch`, and client-side error handling.
+- `actionItemsExtractor.js`: scans Claude text for bullet points or imperative sentences (e.g., "- Use public transport more often") and normalizes them.
+- `chatbotQuestions.js`: houses curated questions plus helpers that derive dynamic prompts from the user's footprint.
+
+### Backend Chatbot API (`api/chatbot.js`)
+- Receives POST payloads `{ message, conversationHistory, userData, enableWebSearch }` and enforces basic validation/CORS.
+- Formats user context (total emissions, top categories with percentages, date range, transaction count, methodology notes) before crafting the Claude system prompt.
+- Optionally calls a web search provider (Serper, Google Custom Search, or Tavily) when `shouldUseWebSearch` flags queries about latest programs, incentives, or Singapore-specific initiatives.
+- Response payload example:
+  ```json
+  {
+    "response": "Claude's grounded reply",
+    "actionItems": ["Use public transport more often"],
+    "usedWebSearch": true,
+    "searchResults": [
+      {"title": "...", "snippet": "...", "url": "..."}
+    ],
+    "error": null
+  }
+  ```
+- The serverless function also truncates conversation history (≈10 turns), extracts action items server-side for redundancy, and logs failures for observability.
+
+### Web Search Workflow
+- Triggered only for carbon-related requests that require current or location-specific knowledge (keywords such as "latest", "programs", "initiatives", "incentives", "Singapore").
+- Search query pattern: `"<user question> carbon emissions Singapore sustainability"`, limited to the top 3–5 relevant results.
+- Each result is summarized (`Title`, `Snippet`, `URL`) and appended to the Claude prompt plus a UI badge (`usedWebSearch`) so users know when external knowledge was referenced.
+- Web search API keys (Serper, Google, Tavily) are stored as environment variables on Vercel; failed searches fall back to the core dataset with a warning.
+
+### Prompt, Scope Guardrails & Action Items
+- System prompt snippet:
+  ```
+  You are a carbon footprint advisor chatbot. You can only discuss carbon emissions, sustainability, or environmental impact. Politely refuse other topics and redirect to carbon questions.
+  ```
+- Guidelines enforced in the prompt:
+  - Always reference user totals/categories when answering.
+  - Format actionable recommendations as single-line bullets (`- Action item`) so they can be parsed reliably.
+  - Use web search context only when provided, otherwise lean on internal data.
+- Action items are extracted both client- and server-side by scanning for bullet prefixes (`-`, `•`, numbers) or imperative phrases ("Try to", "Consider", "You should").
+- Only aggregated data is shared; privacy-masked conversation history keeps token counts manageable while retaining context.
+
+### Architecture Overview
+**Frontend**
+- `CarbonChatbot.js` renders the chat UI, message history, input box, loading/error states, quick questions, action items panel toggle, and search badge.
+- `ActionItemsPanel.js` stores actionable steps, allows checkboxes/clear actions, and will eventually support export.
+- `QuestionButtons.js` groups curated and dynamic prompts (e.g., "How can I reduce transport emissions?").
+- `App.js` only mounts the chatbot when `step === 'results'`, passing `results` + `transactions` as props.
+
+**Frontend Utilities**
+- `chatbotApi.js` orchestrates API calls (`sendChatMessage`), formats user data context, decides when to invoke web search, and parses action items from replies.
+- `chatbotQuestions.js` keeps reusable quick questions plus helpers for top-category prompts.
+- `actionItemsExtractor.js` scans Claude messages for imperative bullets (`- Use…`) or phrases (“Try…”) to populate the checklist.
+
+**Backend**
+- `api/chatbot.js` is a Vercel serverless function that validates payloads, builds the system prompt, optionally calls Serper/Google/Tavily for carbon-only web searches, and proxies to Claude.
+- Shared constants define search thresholds, prompt templates, and safety messaging so the bot refuses out-of-scope queries.
+
+**Prompt & Safety Rails**
+- System prompt enforces sustainability-only scope, references specific user metrics (totals, top categories), and asks Claude to format suggested actions as single-line bullets.
+- Conversation history is truncated (≈10 recent turns) to respect Claude token budgets.
+- Sensitive transaction details remain masked; only aggregated footprints flow to the API.
+
+### Implementation Phases (✅ complete)
+1. **Backend API** – serverless function, context formatter, Claude + optional web search, CORS handling, manual endpoint testing.
+2. **Frontend API Utility** – `sendChatMessage`, `buildUserDataContext`, `shouldUseWebSearch`, action item parsing, robust error states.
+3. **Pre-populated Questions** – curated dataset, `QuestionButtons` UI, responsive styling, integration hooks.
+4. **Chatbot UI** – full chat surface, quick questions, action items panel, search badge, accessibility affordances.
+5. **Action Items Component** – checkbox interactions, persistence over the session, clear/export stubs.
+6. **Integration** – wiring into the results view inside `App.js` and verifying props/state flow.
+7. **Testing & Refinement** – scope-violation tests, dataset variations, API error handling, web-search quality checks.
+
+### Data Flow
+```
+User types question / clicks quick button
+  ↓
+CarbonChatbot state machine
+  ↓
+chatbotApi.sendChatMessage()
+  ↓
+api/chatbot serverless function (decides if web search is needed)
+  ↓
+Claude API (with optional search snippets)
+  ↓
+Action item extraction
+  ↓
+UI updates (messages, checklist, web-search badge)
+```
+
+### Testing Checklist
+- Chatbot appears only after results exist, scrolls correctly, and shows loading/error states.
+- Quick question buttons work on desktop + mobile (horizontal scroll) and remain relevant to top categories.
+- Action items panel can toggle, mark items done, and clear everything while preserving state between bot replies.
+- Web search triggers only for current-events questions, summarizes 3–5 results, and badges responses that used search.
+- Accessibility: Enter-to-send, Escape/minimize controls, ARIA labels, and screen-reader friendly announcements.
+
+### Future Enhancements
+- Export chat history or action items (text/PDF), share links, or reminder scheduling.
+- Comparison view within chat (e.g., month-over-month deltas).
+- Richer inline visualizations, multilingual support, or voice input.
+
+### Environment Variables
+```
+# Existing
+REACT_APP_CLAUDE_API_KEY=sk-ant-api03-...
+CLAUDE_API_KEY=sk-ant-api03-...        # for Vercel
+REACT_APP_USE_PROXY=true
+REACT_APP_PROXY_URL=https://<proxy>/api/categorize
+
+# Optional Web Search Providers
+SERPER_API_KEY=...
+GOOGLE_SEARCH_API_KEY=...
+GOOGLE_SEARCH_ENGINE_ID=...
+TAVILY_API_KEY=...
 ```
 
 ## 🔧 Development
