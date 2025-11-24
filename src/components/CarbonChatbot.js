@@ -27,6 +27,7 @@ const CarbonChatbot = ({ results }) => {
 
   const [actionItems, setActionItems] = useState([]);
   const [usedWebSearch, setUsedWebSearch] = useState(false);
+  const [showPromptSuggestions, setShowPromptSuggestions] = useState(false);
 
   const messageEndRef = useRef(null);
 
@@ -164,11 +165,23 @@ const CarbonChatbot = ({ results }) => {
         )}
       </div>
 
-      <QuestionButtons
-        groups={questionGroups}
-        onSelect={handleQuestionSelect}
-        disabled={isLoading || !userDataContext}
-      />
+      <div className="chatbot-toggle-row">
+        <button
+          type="button"
+          className="chatbot-toggle-prompts"
+          onClick={() => setShowPromptSuggestions(prev => !prev)}
+        >
+          {showPromptSuggestions ? 'Hide quick prompts' : 'Show quick prompts'}
+        </button>
+      </div>
+
+      {showPromptSuggestions && (
+        <QuestionButtons
+          groups={questionGroups}
+          onSelect={handleQuestionSelect}
+          disabled={isLoading || !userDataContext}
+        />
+      )}
 
       <div className="chatbot-messages">
         {messages.map((msg, idx) => renderMessage(msg, idx))}

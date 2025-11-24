@@ -35,33 +35,17 @@ const getTopCategories = (results, limit = 2) => {
  * @returns {Array} - Array of question groups { id, title, questions }
  */
 export const getPredefinedQuestionGroups = (results) => {
-  const topCategories = getTopCategories(results);
+  const topCategories = getTopCategories(results, 1);
   const topCategoryName = topCategories[0]?.name || 'top category';
-  const secondCategoryName = topCategories[1]?.name || null;
 
   const quickAnalysis = [
-    "What's my biggest carbon emission category?",
-    'How does my footprint compare to a typical Singaporean?',
-    'Which months contributed the most to my emissions?',
-    `Why is ${topCategoryName} so high in my results?`
+    `Why is ${topCategoryName} contributing so much to my footprint?`,
+    'How does my total footprint compare to a typical Singapore resident?'
   ];
 
   const reductionStrategies = [
-    'Give me three actionable steps to lower my total emissions.',
-    `How can I reduce my spending-related emissions in ${topCategoryName}?`,
-    'What are the fastest wins to lower my carbon footprint this month?',
-    'Create a weekly plan to reduce my emissions by 10%.'
-  ];
-
-  if (secondCategoryName) {
-    reductionStrategies.push(`Compare strategies for ${topCategoryName} versus ${secondCategoryName}.`);
-  }
-
-  const sustainableAlternatives = [
-    'Recommend sustainable alternatives for my regular purchases.',
-    'What Singapore programs or incentives can help me reduce emissions?',
-    'Suggest low-carbon transport ideas that fit my lifestyle.',
-    'What are eco-friendly food choices available locally?'
+    'Give me two quick wins to cut my emissions this month.',
+    `Suggest one habit change to lower my ${topCategoryName} emissions.`
   ];
 
   return [
@@ -72,13 +56,8 @@ export const getPredefinedQuestionGroups = (results) => {
     },
     {
       id: 'reduction',
-      title: 'Reduction Strategies',
+      title: 'Fast Reductions',
       questions: reductionStrategies
-    },
-    {
-      id: 'alternatives',
-      title: 'Sustainable Alternatives',
-      questions: sustainableAlternatives
     }
   ];
 };
