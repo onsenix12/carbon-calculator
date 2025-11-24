@@ -4,6 +4,7 @@ import FileUpload from './components/FileUpload';
 import ResultsSummary from './components/ResultsSummary';
 import TransactionList from './components/TransactionList';
 import CategoryPieChart from './components/CategoryPieChart';
+import CarbonChatbot from './components/CarbonChatbot';
 import ComparisonView from './components/ComparisonView';
 import MonthFilter from './components/MonthFilter';
 import MethodologyInfo from './components/MethodologyInfo';
@@ -287,6 +288,9 @@ function App() {
             {/* Visual Breakdown */}
             <CategoryPieChart data={results} />
             
+            {/* Carbon Chatbot */}
+            <CarbonChatbot results={results} />
+
             {/* Detailed Transactions */}
             <TransactionList transactions={transactions} />
             

@@ -2,6 +2,9 @@
   "functions": {
     "api/categorize.js": {
       "maxDuration": 10
+    },
+    "api/chatbot.js": {
+      "maxDuration": 30
     }
   }
 }

@@ -163,7 +163,9 @@ export const COMPARISON_THRESHOLDS = {
 export const API_CONFIG = {
   CLAUDE_API_BASE_URL: 'https://api.anthropic.com/v1/messages',
   PROXY_DEFAULT_URL: 'http://localhost:3001/api/categorize',
+  CHATBOT_PROXY_DEFAULT_URL: 'https://carbon-calculator-proxy.vercel.app/api/chatbot',
   PROXY_ENV_VAR: 'REACT_APP_PROXY_URL',
+  CHATBOT_PROXY_ENV_VAR: 'REACT_APP_CHATBOT_PROXY_URL',
   USE_PROXY_ENV_VAR: 'REACT_APP_USE_PROXY'
 };
 
