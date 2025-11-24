@@ -276,11 +276,17 @@ export const categorizeAllTransactions = async (
   let useLLM = options.useLLM;
   let corsDetected = false;
   
-  try {
-    getAPIKey();
-  } catch (error) {
-    logger.warn('Claude API key not configured, using keyword matching');
-    useLLM = false;
+  if (useLLM) {
+    if (USE_PROXY) {
+      logger.info('Using proxy server for LLM categorization (no browser API key required)');
+    } else {
+      try {
+        getAPIKey();
+      } catch (error) {
+        logger.warn('Claude API key not configured, using keyword matching');
+        useLLM = false;
+      }
+    }
   }
 
   for (let i = 0; i < transactions.length; i++) {

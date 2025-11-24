@@ -3,6 +3,16 @@ import React from 'react';
 const ResultsSummary = ({ results }) => {
   if (!results) return null;
 
+  const metadata = results.metadata || {};
+  const dateRange = metadata.dateRange || {};
+  const hasValidDateRange =
+    typeof dateRange.start === 'string' &&
+    typeof dateRange.end === 'string' &&
+    dateRange.start.trim() !== '' &&
+    dateRange.end.trim() !== '' &&
+    !dateRange.start.includes('Invalid') &&
+    !dateRange.end.includes('Invalid');
+
   return (
     <div className="results-summary">
       <h2>🌍 Your Carbon Footprint</h2>
@@ -13,15 +23,11 @@ const ResultsSummary = ({ results }) => {
           <p className="emissions-label">Total Carbon Emissions</p>
         </div>
         
-        {results.metadata.dateRange && 
-         results.metadata.dateRange.start && 
-         results.metadata.dateRange.end &&
-         !results.metadata.dateRange.start.includes('Invalid') &&
-         !results.metadata.dateRange.end.includes('Invalid') && (
+        {hasValidDateRange && (
           <div className="date-range">
             <span className="date-icon">📅</span>
             <span className="dates">
-              {results.metadata.dateRange.start} - {results.metadata.dateRange.end}
+              {dateRange.start} - {dateRange.end}
             </span>
           </div>
         )}
@@ -29,7 +35,7 @@ const ResultsSummary = ({ results }) => {
         <div className="transaction-count">
           <span className="count-icon">💳</span>
           <span className="count-text">
-            {results.metadata.totalTransactions} transactions analyzed
+            {metadata.totalTransactions ?? 0} transactions analyzed
           </span>
         </div>
       </div>

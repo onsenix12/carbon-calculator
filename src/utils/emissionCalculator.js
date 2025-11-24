@@ -55,18 +55,24 @@ export const calculateFootprint = (categorizedTransactions, emissionFactors) => 
   
     // Process each transaction
     categorizedTransactions.forEach(transaction => {
-      const category = transaction.category;
+      const rawCategory = transaction.category || 'uncategorized';
+      const categoryKey = emissionFactors.categories[rawCategory] ? rawCategory : 'uncategorized';
+      const categoryData = results.byCategoryDetailed[categoryKey];
+      if (!categoryData) {
+        return;
+      }
       const subcategory = transaction.subcategory || 'default';
-      const factor = transaction.emissionFactor || 0.5;
+      const amount = typeof transaction.amount === 'number' ? transaction.amount : 0;
+      const factor = typeof transaction.emissionFactor === 'number' ? transaction.emissionFactor : 0.5;
       
       // Calculate emissions
-      const emissions = transaction.amount * factor;
+      const emissions = amount * factor;
   
       // Aggregate totals
       results.totalEmissions += emissions;
-      results.byCategory[category] += emissions;
-      results.byCategoryDetailed[category].emissions += emissions;
-      results.byCategoryDetailed[category].spending += transaction.amount;
+      results.byCategory[categoryKey] += emissions;
+      categoryData.emissions += emissions;
+      categoryData.spending += amount;
   
       // Store transaction with emissions
       const transactionWithEmissions = {
@@ -75,11 +81,11 @@ export const calculateFootprint = (categorizedTransactions, emissionFactors) => 
         factor
       };
   
-      results.byCategoryDetailed[category].transactions.push(transactionWithEmissions);
+      categoryData.transactions.push(transactionWithEmissions);
       
       // Track subcategory
-      if (!results.byCategoryDetailed[category].subcategories[subcategory]) {
-        results.byCategoryDetailed[category].subcategories[subcategory] = {
+      if (!categoryData.subcategories[subcategory]) {
+        categoryData.subcategories[subcategory] = {
           emissions: 0,
           spending: 0,
           count: 0,
@@ -87,9 +93,9 @@ export const calculateFootprint = (categorizedTransactions, emissionFactors) => 
         };
       }
   
-      results.byCategoryDetailed[category].subcategories[subcategory].emissions += emissions;
-      results.byCategoryDetailed[category].subcategories[subcategory].spending += transaction.amount;
-      results.byCategoryDetailed[category].subcategories[subcategory].count++;
+      categoryData.subcategories[subcategory].emissions += emissions;
+      categoryData.subcategories[subcategory].spending += amount;
+      categoryData.subcategories[subcategory].count++;
   
       results.transactions.push(transactionWithEmissions);
     });

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import emissionFactors from '../data/emissionFactors.json';
+import { parseTransactionDate } from '../utils/dateUtils';
 
 const TransactionList = ({ transactions }) => {
   const [filter, setFilter] = useState('all');
@@ -31,9 +32,13 @@ const TransactionList = ({ transactions }) => {
     if (sortBy === 'emissions') {
       compareValue = (a.emissions || 0) - (b.emissions || 0);
     } else if (sortBy === 'date') {
-      const dateA = new Date(a.date.split('/').reverse().join('-'));
-      const dateB = new Date(b.date.split('/').reverse().join('-'));
-      compareValue = dateA - dateB;
+      const parsedA = parseTransactionDate(a.date);
+      const parsedB = parseTransactionDate(b.date);
+      const dateA = parsedA || new Date(a.date);
+      const dateB = parsedB || new Date(b.date);
+      const timeA = isNaN(dateA) ? 0 : dateA.getTime();
+      const timeB = isNaN(dateB) ? 0 : dateB.getTime();
+      compareValue = timeA - timeB;
     } else if (sortBy === 'amount') {
       compareValue = (a.amount || 0) - (b.amount || 0);
     }
