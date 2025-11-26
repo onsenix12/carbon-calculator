@@ -19,6 +19,108 @@ import { FILE_CONFIG } from '../constants';
 pdfjsLib.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL}/pdf.worker.min.js`;
 
 /**
+ * Extract text from PDF text items using position data for accurate layout reconstruction
+ * 
+ * This function uses the position information (transform matrix) from PDF.js
+ * to reconstruct text in the correct order, preserving line breaks and spacing.
+ * 
+ * @param {Array} textItems - Array of text items from getTextContent()
+ * @param {Object} viewport - Page viewport for coordinate calculations
+ * @returns {string} - Reconstructed text with proper layout
+ */
+const extractTextWithLayout = (textItems, viewport) => {
+  if (!textItems || textItems.length === 0) {
+    return '';
+  }
+
+  // Process each text item to extract position and text
+  const processedItems = textItems.map((item, index) => {
+    // Extract position from transform matrix
+    // Transform matrix: [a, b, c, d, e, f] where (e, f) is the translation
+    const transform = item.transform || [1, 0, 0, 1, 0, 0];
+    let x = transform[4] || 0;
+    let y = transform[5] || 0;
+    
+    // Handle different coordinate systems
+    // PDF coordinates start from bottom-left, but viewport might be scaled
+    // Calculate y position from top for easier sorting
+    let yFromTop;
+    if (viewport && viewport.height) {
+      yFromTop = viewport.height - y;
+    } else {
+      // Fallback: use y as-is (assuming top-left origin)
+      yFromTop = y;
+    }
+    
+    // Get width and height, with fallbacks
+    const width = item.width || (item.transform ? Math.abs(transform[0]) : 0);
+    const height = item.height || (item.transform ? Math.abs(transform[3]) : 0);
+    
+    return {
+      text: item.str || '',
+      x,
+      y: yFromTop,
+      width: width > 0 ? width : 10, // Default width if missing
+      height: height > 0 ? height : 10, // Default height if missing
+      index,
+      originalY: y // Keep original for debugging
+    };
+  });
+
+  // Filter out empty text items
+  const validItems = processedItems.filter(item => item.text.trim().length > 0);
+  
+  if (validItems.length === 0) {
+    return '';
+  }
+
+  // Sort by y position (top to bottom), then by x position (left to right)
+  validItems.sort((a, b) => {
+    // Group items that are on roughly the same line (within 5 pixels)
+    const yDiff = Math.abs(a.y - b.y);
+    if (yDiff > 5) {
+      return b.y - a.y; // Higher y (top) comes first
+    }
+    return a.x - b.x; // Left to right
+  });
+
+  // Reconstruct text with proper spacing and line breaks
+  let result = '';
+  let lastY = null;
+  let lastX = null;
+  const lineThreshold = 5; // Pixels - items within this are considered same line
+  const columnThreshold = 20; // Pixels - spacing larger than this indicates new column
+
+  for (let i = 0; i < validItems.length; i++) {
+    const item = validItems[i];
+    
+    // Check if we need a new line
+    if (lastY !== null && Math.abs(item.y - lastY) > lineThreshold) {
+      result += '\n';
+      lastX = null; // Reset x position for new line
+    }
+    // Check if we need spacing (new column or word break)
+    else if (lastX !== null) {
+      const xGap = item.x - (lastX + validItems[i - 1].width);
+      if (xGap > columnThreshold) {
+        // Large gap indicates new column
+        result += '  '; // Double space for column separation
+      } else if (xGap > 2) {
+        // Small gap indicates word break
+        result += ' ';
+      }
+      // If gap is very small (<= 2px), assume it's part of same word, no space
+    }
+
+    result += item.text;
+    lastY = item.y;
+    lastX = item.x;
+  }
+
+  return result;
+};
+
+/**
  * Extract text from all pages of a PDF file
  * 
  * @param {File} file - PDF file object from input
@@ -48,16 +150,48 @@ export const extractTextFromPDF = async (file) => {
     
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
       const page = await pdf.getPage(pageNum);
-      const textContent = await page.getTextContent();
       
-      // Combine all text items from the page
-      const pageText = textContent.items
-        .map(item => item.str)
-        .join(' ');
+      // Try to get text content with normalizeWhitespace option first
+      // This helps with some PDFs that have inconsistent spacing
+      let textContent;
+      try {
+        textContent = await page.getTextContent({ 
+          normalizeWhitespace: false // Keep original spacing for better accuracy
+        });
+      } catch (error) {
+        // Fallback to default if options not supported
+        logger.debug(`Page ${pageNum}: Using default text extraction`);
+        textContent = await page.getTextContent();
+      }
+      
+      // Get viewport to understand page dimensions
+      const viewport = page.getViewport({ scale: 1.0 });
+      
+      // Extract text using position-aware method
+      let pageText = extractTextWithLayout(textContent.items, viewport);
+      
+      // Fallback: If position-based extraction yields very little text,
+      // try simple join method (some PDFs might have missing position data)
+      if (pageText.trim().length < 50 && textContent.items.length > 10) {
+        logger.debug(`Page ${pageNum}: Position-based extraction yielded little text, trying fallback method`);
+        const fallbackText = textContent.items
+          .map(item => item.str)
+          .filter(str => str && str.trim().length > 0)
+          .join(' ');
+        // Use fallback if it has more content
+        if (fallbackText.length > pageText.length) {
+          pageText = fallbackText;
+        }
+      }
       
       fullText += pageText + '\n';
       
-      logger.debug(`Page ${pageNum}/${pdf.numPages} extracted`);
+      logger.debug(`Page ${pageNum}/${pdf.numPages} extracted (${pageText.length} chars, ${textContent.items.length} text items)`);
+      
+      // Log warning if very little text was extracted but many items exist
+      if (pageText.trim().length < 100 && textContent.items.length > 50) {
+        logger.warn(`Page ${pageNum}: Extracted only ${pageText.trim().length} chars from ${textContent.items.length} text items. Some text may be missing.`);
+      }
     }
 
     logger.success('PDF extraction complete');
