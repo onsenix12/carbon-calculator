@@ -116,10 +116,23 @@ export const regexPatternStrategy = (text) => {
   const allDates = findDatePatterns(text);
   const transactionPattern = /(\d{1,2}\s+[A-Z]{3})\s+(.+?)\s+([\d,]+\.\d{2})(?:\s+CR)?/;
   
+  // Currency indicators that suggest multi-line foreign transactions
+  const currencyIndicators = /(EUROPEAN MONETARY COOP FUND|YEN|U\.?\s*S\.?\s*DOLLAR|DOLLAR|EURO|POUND)/i;
+  
   for (let i = 0; i < allDates.length; i++) {
     const dateInfo = allDates[i];
     const nextDateIndex = i + 1 < allDates.length ? allDates[i + 1].index : text.length;
     const segment = text.substring(dateInfo.index, nextDateIndex);
+    
+    // NEW: Check if this segment contains a currency indicator
+    // If so, it's a multi-line foreign transaction - skip regex strategy for this one
+    if (currencyIndicators.test(segment)) {
+      console.log(`[regexPatternStrategy] Skipping segment with currency indicator: "${segment.substring(0, 100)}..."`);
+      logger.debug(`[regexPatternStrategy] Skipping segment with currency indicator, letting lineByLineStrategy handle it`);
+      failedCount++; // Let lineByLineStrategy handle it
+      continue;
+    }
+    
     const match = segment.match(transactionPattern);
     
     if (match) {
@@ -161,10 +174,23 @@ export const dateSplitStrategy = (text) => {
   const dateMatches = findDatePatterns(text);
   const transactionPattern = /(\d{1,2}\s+[A-Z]{3})\s+(.+?)\s+([\d,]+\.\d{2})(?:\s+CR)?/;
   
+  // Currency indicators that suggest multi-line foreign transactions
+  const currencyIndicators = /(EUROPEAN MONETARY COOP FUND|YEN|U\.?\s*S\.?\s*DOLLAR|DOLLAR|EURO|POUND)/i;
+  
   for (let i = 0; i < dateMatches.length; i++) {
     const currentDate = dateMatches[i];
     const nextIndex = i + 1 < dateMatches.length ? dateMatches[i + 1].index : text.length;
     const segment = text.substring(currentDate.index, nextIndex).trim();
+    
+    // NEW: Check if this segment contains a currency indicator
+    // If so, it's a multi-line foreign transaction - skip this strategy for this one
+    if (currencyIndicators.test(segment)) {
+      console.log(`[dateSplitStrategy] Skipping segment with currency indicator: "${segment.substring(0, 100)}..."`);
+      logger.debug(`[dateSplitStrategy] Skipping segment with currency indicator, letting lineByLineStrategy handle it`);
+      failedCount++; // Let lineByLineStrategy handle it
+      continue;
+    }
+    
     const match = segment.match(transactionPattern);
     
     if (match) {

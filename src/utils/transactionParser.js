@@ -100,37 +100,67 @@ export const parseDBSTransactions = (transactionText) => {
   // Strategy 1: Try regex pattern matching
   logger.debug('Trying regex pattern strategy...');
   let result = regexPatternStrategy(maskedText);
-  transactions = result.transactions;
-  skippedCount = result.skippedCount;
-  failedCount = result.failedCount;
+  const regexTransactions = result.transactions;
+  skippedCount += result.skippedCount;
+  failedCount += result.failedCount;
   
-  logger.debug(`Regex strategy: Found ${transactions.length} transactions (skipped: ${skippedCount}, failed: ${failedCount})`);
+  logger.debug(`Regex strategy: Found ${regexTransactions.length} transactions (skipped: ${skippedCount}, failed: ${failedCount})`);
 
   // Strategy 2: If no transactions found, try date-split approach
-  if (transactions.length === 0) {
+  let dateSplitTransactions = [];
+  if (regexTransactions.length === 0) {
     logger.debug('No regex matches, trying date-split strategy...');
     result = dateSplitStrategy(maskedText);
-    transactions = result.transactions;
-    skippedCount = result.skippedCount;
-    failedCount = result.failedCount;
+    dateSplitTransactions = result.transactions;
+    skippedCount += result.skippedCount;
+    failedCount += result.failedCount;
     
-    logger.debug(`Date-split strategy: Found ${transactions.length} transactions (skipped: ${skippedCount}, failed: ${failedCount})`);
+    logger.debug(`Date-split strategy: Found ${dateSplitTransactions.length} transactions (skipped: ${result.skippedCount}, failed: ${result.failedCount})`);
   }
 
-  // Strategy 3: If still no transactions, fall back to line-by-line parsing
-  if (transactions.length === 0) {
-    logger.debug('No matches found, trying line-by-line strategy...');
-    const lines = maskedText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    logger.debug(`Total lines: ${lines.length}`);
-    logger.debug(`First 10 lines: ${lines.slice(0, 10).join(', ')}`);
-    
-    result = lineByLineStrategy(maskedText, parseSingleTransaction);
-    transactions = result.transactions;
-    skippedCount = result.skippedCount;
-    failedCount = result.failedCount;
-    
-    logger.debug(`Line-by-line strategy: Found ${transactions.length} transactions (skipped: ${skippedCount}, failed: ${failedCount})`);
-  }
+  // Strategy 3: Always run line-by-line parsing to catch foreign currency transactions
+  // that were skipped by regex/date-split strategies
+  logger.debug('Running line-by-line strategy to catch foreign currency transactions...');
+  const lines = maskedText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  logger.debug(`Total lines: ${lines.length}`);
+  
+  result = lineByLineStrategy(maskedText, parseSingleTransaction);
+  const lineByLineTransactions = result.transactions;
+  skippedCount += result.skippedCount;
+  failedCount += result.failedCount;
+  
+  logger.debug(`Line-by-line strategy: Found ${lineByLineTransactions.length} transactions (skipped: ${result.skippedCount}, failed: ${result.failedCount})`);
+
+  // Merge transactions from all strategies
+  // Use a Set to deduplicate by date+merchant+amount (in case multiple strategies found the same transaction)
+  const transactionMap = new Map();
+  
+  // Add regex transactions
+  regexTransactions.forEach(t => {
+    const key = `${t.date}|${t.merchant}|${t.amount}`;
+    if (!transactionMap.has(key)) {
+      transactionMap.set(key, t);
+    }
+  });
+  
+  // Add date-split transactions
+  dateSplitTransactions.forEach(t => {
+    const key = `${t.date}|${t.merchant}|${t.amount}`;
+    if (!transactionMap.has(key)) {
+      transactionMap.set(key, t);
+    }
+  });
+  
+  // Add line-by-line transactions (these take precedence for foreign currency transactions)
+  lineByLineTransactions.forEach(t => {
+    const key = `${t.date}|${t.merchant}|${t.amount}`;
+    // Always use line-by-line result if it exists (it has better foreign currency handling)
+    transactionMap.set(key, t);
+  });
+  
+  transactions = Array.from(transactionMap.values());
+  
+  logger.debug(`Merged results: ${transactions.length} unique transactions from all strategies`);
 
   logger.success('Parsing complete');
   logger.info(`Transactions found: ${transactions.length}`);
