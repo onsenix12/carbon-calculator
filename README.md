@@ -516,10 +516,11 @@ The parser handles multiple transaction formats:
 Uses Claude API to intelligently categorize merchants into emission categories:
 - **food_dining**: Restaurants, cafes, food courts, hawkers, vending machines
 - **transport**: Grab, taxis, MRT, buses, petrol stations
+- **flights**: Airline tickets (spend-based, automatically detected)
 - **utilities**: Electricity, water, gas bills
 - **shopping**: Retail stores, supermarkets, clothing, electronics
 - **entertainment**: Netflix, Spotify, gyms, cinemas
-- **travel**: Hotels, flights, accommodation
+- **travel (accommodation)**: Hotels, staycations, lodging services
 
 ### Keyword-Based Fallback
 

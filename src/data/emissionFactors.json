@@ -176,7 +176,14 @@
             "petrol": "~3.1 kg CO2/tonne combusted (SEFR Fuel)",
             "conversion_note": "Adjusted to per-litre basis"
           }
-        },
+        }
+      }
+    },
+    "flights": {
+      "name": "Flights",
+      "icon": "✈️",
+      "description": "Air travel purchases (spend-based factors)",
+      "subcategories": {
         "flight_spend": {
           "factor": 1.10,
           "unit": "kg CO2e/SGD",
@@ -191,6 +198,16 @@
             "limitation": "Does not account for flight distance or class - highly inaccurate"
           },
           "recommendation": "Use distance-based calculation when flight route is known"
+        },
+        "flight_longhaul": {
+          "factor": 1.10,
+          "unit": "kg CO2e/SGD",
+          "source": "DBS comparison",
+          "confidence": "very_low",
+          "keywords": ["long haul", "international flight", "business class"],
+          "examples": ["Long-haul flights"],
+          "rationale": "Highly inaccurate - distance-based calculation strongly recommended",
+          "warning": "Spend-based flight calculations are unreliable. Use distance-based when possible."
         }
       }
     },
@@ -376,9 +393,9 @@
       }
     },
     "travel": {
-      "name": "Travel & Accommodation",
-      "icon": "✈️",
-      "description": "Travel expenses including accommodation",
+      "name": "Accommodation & Travel Services",
+      "icon": "🏨",
+      "description": "Hotels, lodging, and related travel services",
       "subcategories": {
         "hotel_singapore": {
           "factor": 0.45,
@@ -397,16 +414,6 @@
           "keywords": ["booking.com", "agoda", "expedia", "airbnb"],
           "examples": ["International hotel bookings"],
           "rationale": "Variable by location, average estimate"
-        },
-        "flight_spend_longhaul": {
-          "factor": 1.10,
-          "unit": "kg CO2e/SGD",
-          "source": "DBS comparison",
-          "confidence": "very_low",
-          "keywords": ["long haul", "international flight", "business class"],
-          "examples": ["Long-haul flights"],
-          "rationale": "Highly inaccurate - distance-based calculation strongly recommended",
-          "warning": "Spend-based flight calculations are unreliable. Use distance-based when possible."
         }
       }
     },

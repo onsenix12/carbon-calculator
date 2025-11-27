@@ -247,6 +247,73 @@ const findBestSubcategory = (merchantName, category) => {
 };
 
 /**
+ * Detect if a merchant string likely represents an airline / flight transaction
+ * @param {string} merchantName
+ * @returns {boolean}
+ */
+const isLikelyFlightMerchant = (merchantName = '') => {
+  if (!merchantName) {
+    return false;
+  }
+
+  const normalized = merchantName.toLowerCase();
+
+  // If it explicitly looks like a hotel/accommodation, skip
+  if (normalized.includes('hotel') || normalized.includes('airbnb')) {
+    return false;
+  }
+
+  const flightPatterns = [
+    /singapore\d{6,}/i,
+    /singapore airlines/i,
+    /\bsia\b/i,
+    /scoot/i,
+    /flyscoot/i,
+    /jetstar/i,
+    /airasia/i,
+    /malindo/i,
+    /cathay/i,
+    /emirates/i,
+    /rome it/i,
+    /flight/i
+  ];
+
+  return flightPatterns.some(pattern => pattern.test(merchantName));
+};
+
+/**
+ * Apply rule-based overrides for special case merchants
+ * Ensures flights are categorized under flights > flight_spend, etc.
+ * @param {Object} transaction - Original transaction
+ * @param {Object} result - Categorization result
+ * @param {Object} emissionFactors - Emission factors database
+ * @returns {Object} - Possibly adjusted result
+ */
+const applySpecialCategoryRules = (transaction, result, emissionFactors) => {
+  const merchantName = (transaction.merchant || transaction.merchantCleaned || '').trim();
+  const flightsCategory = emissionFactors.categories.flights;
+  const flightSubcategory = flightsCategory?.subcategories?.flight_spend;
+
+  if (flightSubcategory && merchantName && isLikelyFlightMerchant(merchantName)) {
+    // Already categorized correctly
+    if (result.category === 'flights' && result.subcategory === 'flight_spend') {
+      return result;
+    }
+
+    logger.debug(`[categorizeAllTransactions] Rule override: "${merchantName}" detected as flight transaction`);
+    return {
+      category: 'flights',
+      subcategory: 'flight_spend',
+      factor: flightSubcategory.factor,
+      confidence: 'high',
+      method: `${result?.method || 'rule'}_override`
+    };
+  }
+
+  return result;
+};
+
+/**
  * Categorize all transactions
  * 
  * @param {Array} transactions - Parsed transactions
@@ -376,13 +443,15 @@ export const categorizeAllTransactions = async (
     }
 
     // Add categorization to transaction
+    const adjustedResult = applySpecialCategoryRules(transaction, result, emissionFactors);
+
     categorized.push({
       ...transaction,
-      category: result.category,
-      subcategory: result.subcategory,
-      emissionFactor: result.factor,
-      confidence: result.confidence,
-      method: result.method
+      category: adjustedResult.category,
+      subcategory: adjustedResult.subcategory,
+      emissionFactor: adjustedResult.factor,
+      confidence: adjustedResult.confidence,
+      method: adjustedResult.method
     });
 
     // Progress logging and callback every 10 transactions

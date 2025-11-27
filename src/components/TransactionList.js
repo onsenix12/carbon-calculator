@@ -72,6 +72,23 @@ const TransactionList = ({ transactions }) => {
     };
   };
 
+  const toTitleCase = (value = '') => value.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+
+  const getSubcategoryLabel = (categoryKey, subcategoryKey) => {
+    if (!subcategoryKey) {
+      return null;
+    }
+
+    const category = emissionFactors.categories[categoryKey];
+    const subcategory = category?.subcategories?.[subcategoryKey];
+
+    if (subcategory?.name) {
+      return subcategory.name;
+    }
+
+    return toTitleCase(subcategoryKey);
+  };
+
   return (
     <div className="transaction-list">
       <div className="transaction-list-header">
@@ -148,7 +165,9 @@ const TransactionList = ({ transactions }) => {
                 <td className="merchant-cell">
                   <div className="merchant-name">{transaction.merchant}</div>
                   {transaction.subcategory && (
-                    <div className="subcategory">{transaction.subcategory}</div>
+                    <div className="subcategory">
+                      {getSubcategoryLabel(transaction.category, transaction.subcategory)}
+                    </div>
                   )}
                 </td>
                 <td className="category-cell">
