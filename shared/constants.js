@@ -29,22 +29,27 @@ Task: Return ONLY the category name that best matches this merchant.
 If uncertain, return "uncategorized".
 
 Rules:
-- food_dining: Restaurants, cafes, food courts, hawkers, food delivery
+- food_dining: Restaurants, cafes, food courts, hawkers, food delivery, vending machines
 - transport: Grab, taxis, MRT, buses, petrol stations, ride-hailing, public transport
 - utilities: Electricity, water, gas bills
 - shopping: Retail stores, supermarkets, clothing, electronics
 - entertainment: Netflix, Spotify, gyms, cinemas, games
-- travel: Hotels, flights, accommodation
+- travel: Hotels, flights, accommodation. IMPORTANT: Transactions with "SINGAPORE" followed by numbers and location codes (like "IT", "ROME", country codes) are FLIGHTS → travel
+- uncategorized: Unknown merchants, or taxes/fees (use subcategory "taxes_fees" for zero emissions)
 
 Examples:
 - "GRAB" → transport
 - "PUBLIC TRANSPORT" → transport
 - "BUS/MRT" → transport
 - "KOUFU" → food_dining
+- "TRIPLETSSMU" → food_dining
+- "IJOOZ AI" → food_dining
 - "NTUC FAIRPRICE" → shopping
 - "SP SERVICES" → utilities
 - "NETFLIX" → entertainment
 - "DON DON DONKI" → shopping
+- "SINGAPORE6182469896812 IT" → travel (flight to Italy)
+- "SINGAPORE6182469896812 ROME IT" → travel (flight to Italy)
 
 Response (one word only):`;
 }

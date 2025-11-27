@@ -76,8 +76,8 @@
           "unit": "kg CO2e/SGD",
           "source": "Research estimate",
           "confidence": "medium",
-          "keywords": ["restaurant", "cafe", "bistro", "dining", "eatery", "coffee", "starbucks", "toast box"],
-          "examples": ["Casual dining restaurants", "Chain cafes"],
+          "keywords": ["restaurant", "cafe", "bistro", "dining", "eatery", "coffee", "starbucks", "toast box", "tripletssmu"],
+          "examples": ["Casual dining restaurants", "Chain cafes", "TRIPLETSSMU"],
           "rationale": "Moderate factor for mixed cuisine, medium supply chain complexity"
         },
         "restaurant_fine_dining": {
@@ -110,6 +110,15 @@
           "keywords": ["ntuc", "fairprice", "cold storage", "sheng siong", "giant", "prime", "redmart", "marketplace"],
           "examples": ["NTUC FairPrice", "Cold Storage", "Sheng Siong"],
           "rationale": "Mixed basket of local and imported goods"
+        },
+        "vending_machine": {
+          "factor": 0.60,
+          "unit": "kg CO2e/SGD",
+          "source": "Research estimate",
+          "confidence": "low",
+          "keywords": ["ijooz", "vending", "vending machine", "drink machine"],
+          "examples": ["IJOOZ AI", "Vending machines"],
+          "rationale": "Packaged drinks, lower overhead than restaurants"
         }
       }
     },
@@ -173,8 +182,8 @@
           "unit": "kg CO2e/SGD",
           "source": "DBS LiveBetter (reverse-engineered)",
           "confidence": "low",
-          "keywords": ["singapore airlines", "sia", "scoot", "jetstar", "airasia", "malindo", "cathay", "emirates", "flight", "airline"],
-          "examples": ["Singapore Airlines", "Scoot", "Budget airlines"],
+          "keywords": ["singapore airlines", "sia", "scoot", "jetstar", "airasia", "malindo", "cathay", "emirates", "flight", "airline", "singapore618246989", "rome it", "rome", "italy", "it "],
+          "examples": ["Singapore Airlines", "Scoot", "Budget airlines", "SINGAPORE6182469896812 IT"],
           "rationale": "Spend-based is inaccurate for flights - distance-based preferred",
           "comparison_dbs": {
             "dbs_factor": 1.10,
@@ -415,6 +424,16 @@
           "examples": ["Unknown merchants"],
           "rationale": "Conservative mid-point estimate when categorization fails",
           "note": "This is a fallback only. Manual review recommended for uncategorized transactions."
+        },
+        "taxes_fees": {
+          "factor": 0.00,
+          "unit": "kg CO2e/SGD",
+          "source": "No emissions for financial transactions",
+          "confidence": "high",
+          "keywords": ["tax", "fee", "surcharge", "admin fee", "gst", "service charge"],
+          "examples": ["Taxes", "Fees", "Service charges"],
+          "rationale": "Financial transactions (taxes, fees) do not generate direct emissions",
+          "note": "For transactions paid with miles/points where only taxes/fees are charged"
         }
       }
     }
