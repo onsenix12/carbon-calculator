@@ -48,14 +48,24 @@ export const parseSingleTransaction = (lines, startIdx) => {
   );
   
   if (simpleMatch) {
-    logger.debug(`[parseSingleTransaction] Pattern 1 (Simple SGD) matched`);
-  }
-
-  if (simpleMatch) {
     const [, date, merchant, amount] = simpleMatch;
     
-    // Validate date format (should be like "12 SEP" or "01 OCT")
-    if (date.match(/\d{1,2}\s+[A-Z]{3}/)) {
+    // Check if next line has currency indicator - if so, this is actually a foreign transaction
+    // Skip Pattern 1 and let Pattern 2 handle it
+    let isForeignTransaction = false;
+    if (startIdx + 1 < lines.length) {
+      const nextLine = lines[startIdx + 1];
+      const hasCurrencyOnNextLine = /(EUROPEAN MONETARY COOP FUND|YEN|U\.?\s*S\.?\s*DOLLAR|DOLLAR|EURO|POUND)/i.test(nextLine);
+      if (hasCurrencyOnNextLine) {
+        console.log(`[parseSingleTransaction] Pattern 1 skipped - next line "${nextLine}" has currency indicator, deferring to Pattern 2`);
+        logger.debug(`[parseSingleTransaction] Pattern 1 skipped - next line has currency, deferring to Pattern 2`);
+        isForeignTransaction = true;
+      }
+    }
+    
+    // Only return as simple transaction if it's NOT a foreign transaction
+    if (!isForeignTransaction && date.match(/\d{1,2}\s+[A-Z]{3}/)) {
+      logger.debug(`[parseSingleTransaction] Pattern 1 (Simple SGD) matched`);
       return {
         date: date.trim(),
         merchant: merchant.trim(),
@@ -75,10 +85,24 @@ export const parseSingleTransaction = (lines, startIdx) => {
   );
 
   if (flexibleMatch) {
-    logger.debug(`[parseSingleTransaction] Pattern 1b (Flexible SGD) matched`);
     const [, date, merchant, amount] = flexibleMatch;
     
-    if (date.match(/\d{1,2}\s+[A-Z]{3}/)) {
+    // Check if next line has currency indicator - if so, this is actually a foreign transaction
+    // Skip Pattern 1b and let Pattern 2 handle it
+    let isForeignTransaction = false;
+    if (startIdx + 1 < lines.length) {
+      const nextLine = lines[startIdx + 1];
+      const hasCurrencyOnNextLine = /(EUROPEAN MONETARY COOP FUND|YEN|U\.?\s*S\.?\s*DOLLAR|DOLLAR|EURO|POUND)/i.test(nextLine);
+      if (hasCurrencyOnNextLine) {
+        console.log(`[parseSingleTransaction] Pattern 1b skipped - next line "${nextLine}" has currency indicator, deferring to Pattern 2`);
+        logger.debug(`[parseSingleTransaction] Pattern 1b skipped - next line has currency, deferring to Pattern 2`);
+        isForeignTransaction = true;
+      }
+    }
+    
+    // Only return as simple transaction if it's NOT a foreign transaction
+    if (!isForeignTransaction && date.match(/\d{1,2}\s+[A-Z]{3}/)) {
+      logger.debug(`[parseSingleTransaction] Pattern 1b (Flexible SGD) matched`);
       const cleanAmount = amount.replace(/[\s,]/g, '');
       const parsedAmount = parseFloat(cleanAmount);
       
