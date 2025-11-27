@@ -194,16 +194,17 @@ export const parseSingleTransaction = (lines, startIdx) => {
             console.log(`[parseSingleTransaction] Pattern 2 - SGD amount found on same line as currency: ${sgdAmount}`);
             logger.debug(`[parseSingleTransaction] Pattern 2 - SGD amount found on same line: ${sgdAmount}`);
           } else if (startIdx + 2 < lines.length) {
-          // Check next line for SGD amount
-          const thirdLine = lines[startIdx + 2];
-          logger.debug(`[parseSingleTransaction] Pattern 2 - Checking third line for SGD amount: "${thirdLine}"`);
-          const sgdOnNextLine = thirdLine.match(/^([\d,]+\.\d{2})/);
-          if (sgdOnNextLine) {
-            sgdAmount = parseFloat(sgdOnNextLine[1].replace(',', ''));
-            linesUsed = 3;
-            logger.debug(`[parseSingleTransaction] Pattern 2 - SGD amount found on third line: ${sgdAmount}`);
-          } else {
-            logger.debug(`[parseSingleTransaction] Pattern 2 - No SGD amount found on third line`);
+            // Check next line for SGD amount
+            const thirdLine = lines[startIdx + 2];
+            logger.debug(`[parseSingleTransaction] Pattern 2 - Checking third line for SGD amount: "${thirdLine}"`);
+            const sgdOnNextLine = thirdLine.match(/^([\d,]+\.\d{2})/);
+            if (sgdOnNextLine) {
+              sgdAmount = parseFloat(sgdOnNextLine[1].replace(',', ''));
+              linesUsed = 3;
+              logger.debug(`[parseSingleTransaction] Pattern 2 - SGD amount found on third line: ${sgdAmount}`);
+            } else {
+              logger.debug(`[parseSingleTransaction] Pattern 2 - No SGD amount found on third line`);
+            }
           }
         } else {
           logger.debug(`[parseSingleTransaction] Pattern 2 - No third line available for SGD amount`);
