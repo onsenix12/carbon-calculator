@@ -237,55 +237,55 @@ export const parseSingleTransaction = (lines, startIdx) => {
 
       if (currencyMatch) {
         logger.debug(`[parseSingleTransaction] Pattern 3 - Currency matched: "${currencyMatch[1]}", amount: "${currencyMatch[2]}"`);
-      const [, currency, originalAmount] = currencyMatch;
+        const [, currency, originalAmount] = currencyMatch;
 
-      // Look for SGD amount
-      let sgdAmount = null;
-      let linesUsed = 2;
+        // Look for SGD amount
+        let sgdAmount = null;
+        let linesUsed = 2;
 
-      // Check if SGD amount is on the same line as currency
-      const sgdOnSameLine = nextLine.match(/(?:EUROPEAN MONETARY COOP FUND|YEN|U\.?\s*S\.?\s*DOLLAR|DOLLAR|EURO|POUND)\s+[\d,]+\.?\d*\s+([\d,]+\.\d{2})/);
-      if (sgdOnSameLine) {
-        sgdAmount = parseFloat(sgdOnSameLine[1].replace(',', ''));
-      } else if (startIdx + 2 < lines.length) {
-        const thirdLine = lines[startIdx + 2];
-        const sgdOnNextLine = thirdLine.match(/^([\d,]+\.\d{2})/);
-        if (sgdOnNextLine) {
-          sgdAmount = parseFloat(sgdOnNextLine[1].replace(',', ''));
-          linesUsed = 3;
+        // Check if SGD amount is on the same line as currency
+        const sgdOnSameLine = nextLine.match(/(?:EUROPEAN MONETARY COOP FUND|YEN|U\.?\s*S\.?\s*DOLLAR|DOLLAR|EURO|POUND)\s+[\d,]+\.?\d*\s+([\d,]+\.\d{2})/);
+        if (sgdOnSameLine) {
+          sgdAmount = parseFloat(sgdOnSameLine[1].replace(',', ''));
+        } else if (startIdx + 2 < lines.length) {
+          const thirdLine = lines[startIdx + 2];
+          const sgdOnNextLine = thirdLine.match(/^([\d,]+\.\d{2})/);
+          if (sgdOnNextLine) {
+            sgdAmount = parseFloat(sgdOnNextLine[1].replace(',', ''));
+            linesUsed = 3;
+          }
         }
-      }
 
-      if (sgdAmount) {
-        // Determine currency code
-        let originalCurrency = 'EUR';
-        if (currency.includes('DOLLAR') || currency.includes('U.S')) {
-          originalCurrency = 'USD';
-        } else if (currency.includes('YEN')) {
-          originalCurrency = 'JPY';
-        } else if (currency.includes('POUND')) {
-          originalCurrency = 'GBP';
-        } else if (currency.includes('EUROPEAN MONETARY') || currency.includes('EURO')) {
-          originalCurrency = 'EUR';
+        if (sgdAmount) {
+          // Determine currency code
+          let originalCurrency = 'EUR';
+          if (currency.includes('DOLLAR') || currency.includes('U.S')) {
+            originalCurrency = 'USD';
+          } else if (currency.includes('YEN')) {
+            originalCurrency = 'JPY';
+          } else if (currency.includes('POUND')) {
+            originalCurrency = 'GBP';
+          } else if (currency.includes('EUROPEAN MONETARY') || currency.includes('EURO')) {
+            originalCurrency = 'EUR';
+          }
+          
+          return {
+            date: date.trim(),
+            merchant: merchant.trim(),
+            merchantCleaned: cleanMerchantName(merchant.trim()),
+            amount: sgdAmount,
+            currency: 'SGD',
+            originalCurrency: originalCurrency,
+            originalAmount: parseFloat(originalAmount.replace(',', '')),
+            type: 'foreign',
+            linesConsumed: linesUsed
+          };
+        } else {
+          logger.debug(`[parseSingleTransaction] Pattern 3 - FAILED: Currency found but no SGD amount could be extracted`);
         }
-        
-        return {
-          date: date.trim(),
-          merchant: merchant.trim(),
-          merchantCleaned: cleanMerchantName(merchant.trim()),
-          amount: sgdAmount,
-          currency: 'SGD',
-          originalCurrency: originalCurrency,
-          originalAmount: parseFloat(originalAmount.replace(',', '')),
-          type: 'foreign',
-          linesConsumed: linesUsed
-        };
       } else {
-        logger.debug(`[parseSingleTransaction] Pattern 3 - FAILED: Currency found but no SGD amount could be extracted`);
+        logger.debug(`[parseSingleTransaction] Pattern 3 - FAILED: No currency match on next line`);
       }
-    } else {
-      logger.debug(`[parseSingleTransaction] Pattern 3 - FAILED: No currency match on next line`);
-    }
     } else {
       logger.debug(`[parseSingleTransaction] Pattern 3 - FAILED: No next line available`);
     }
