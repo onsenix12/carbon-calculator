@@ -66,7 +66,6 @@ export const parseSingleTransaction = (lines, startIdx) => {
 
   if (flexibleMatch) {
     logger.debug(`[parseSingleTransaction] Pattern 1b (Flexible SGD) matched`);
-  }
     const [, date, merchant, amount] = flexibleMatch;
     
     if (date.match(/\d{1,2}\s+[A-Z]{3}/)) {
