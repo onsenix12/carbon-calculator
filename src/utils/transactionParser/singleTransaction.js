@@ -70,20 +70,44 @@ export const parseSingleTransaction = (lines, startIdx) => {
   }
 
   // Pattern 2: Foreign currency transaction (multi-line)
-  // Line 1: DD MMM MERCHANT_NAME LOCATION_CODE
+  // Line 1: DD MMM MERCHANT_NAME/IDENTIFIER LOCATION (e.g., "26 OCT SINGAPORE6182469896298 ROME IT")
   // Line 2: CURRENCY AMOUNT
   // Line 3 (or same as 2): SGD_AMOUNT
+  // More flexible pattern: date + identifier/merchant + optional location (2 letters at end, possibly after space)
+  // Also handle cases where location code might be part of a phrase like "ROME IT"
+  // Match date and everything after it, then extract location code from the end
   const foreignHeaderMatch = line.match(
-    /^(\d{2}\s+[A-Z]{3})\s+(.+?)\s+([A-Z]{2})$/
+    /^(\d{2}\s+[A-Z]{3})\s+(.+)$/
   );
 
   if (foreignHeaderMatch && startIdx + 1 < lines.length) {
-    const [, date, merchant, locationCode] = foreignHeaderMatch;
+    const [, date, restOfLine] = foreignHeaderMatch;
+    
+    // Extract location code from the end if it exists (2 uppercase letters, possibly after a space and word)
+    // Pattern: ends with "WORD IT" or " IT" or just "IT"
+    let merchantOrIdentifier = restOfLine;
+    let locationCode = null;
+    
+    // Check if line ends with a 2-letter uppercase code (location code)
+    // Pattern 1: " WORD IT" (word followed by space and 2-letter code)
+    const locationMatch1 = restOfLine.match(/^(.+?)\s+[A-Z]+\s+([A-Z]{2})$/);
+    if (locationMatch1) {
+      merchantOrIdentifier = locationMatch1[1];
+      locationCode = locationMatch1[2];
+    } else {
+      // Pattern 2: " IT" (space and 2-letter code at end)
+      const locationMatch2 = restOfLine.match(/^(.+?)\s+([A-Z]{2})$/);
+      if (locationMatch2) {
+        merchantOrIdentifier = locationMatch2[1];
+        locationCode = locationMatch2[2];
+      }
+      // If no match, no location code - use entire restOfLine as merchant
+    }
     const nextLine = lines[startIdx + 1];
 
-    // Look for currency on next line
+    // Look for currency on next line - check for EUROPEAN MONETARY COOP FUND first (longest match)
     const currencyMatch = nextLine.match(
-      /(YEN|DOLLAR|EURO|POUND|EUROPEAN MONETARY COOP FUND)\s+([\d,]+\.?\d*)/
+      /(EUROPEAN MONETARY COOP FUND|YEN|U\.?\s*S\.?\s*DOLLAR|DOLLAR|EURO|POUND)\s+([\d,]+\.?\d*)/
     );
 
     if (currencyMatch) {
@@ -93,10 +117,13 @@ export const parseSingleTransaction = (lines, startIdx) => {
       let sgdAmount = null;
       let linesUsed = 2;
 
-      const sgdOnSameLine = nextLine.match(/([\d,]+\.\d{2})$/);
+      // Check if SGD amount is on the same line as currency (after the original amount)
+      // Pattern: CURRENCY AMOUNT SGD_AMOUNT
+      const sgdOnSameLine = nextLine.match(/(?:EUROPEAN MONETARY COOP FUND|YEN|U\.?\s*S\.?\s*DOLLAR|DOLLAR|EURO|POUND)\s+[\d,]+\.?\d*\s+([\d,]+\.\d{2})/);
       if (sgdOnSameLine) {
         sgdAmount = parseFloat(sgdOnSameLine[1].replace(',', ''));
       } else if (startIdx + 2 < lines.length) {
+        // Check next line for SGD amount
         const thirdLine = lines[startIdx + 2];
         const sgdOnNextLine = thirdLine.match(/^([\d,]+\.\d{2})/);
         if (sgdOnNextLine) {
@@ -106,13 +133,32 @@ export const parseSingleTransaction = (lines, startIdx) => {
       }
 
       if (sgdAmount) {
+        // Clean up merchant name - remove location code if it was captured separately
+        let merchant = merchantOrIdentifier.trim();
+        // If location code exists and merchant ends with it, remove it to avoid duplication
+        if (locationCode && merchant.endsWith(locationCode)) {
+          merchant = merchant.substring(0, merchant.length - locationCode.length).trim();
+        }
+        
+        // Determine currency code
+        let originalCurrency = 'EUR';
+        if (currency.includes('DOLLAR') || currency.includes('U.S')) {
+          originalCurrency = 'USD';
+        } else if (currency.includes('YEN')) {
+          originalCurrency = 'JPY';
+        } else if (currency.includes('POUND')) {
+          originalCurrency = 'GBP';
+        } else if (currency.includes('EUROPEAN MONETARY') || currency.includes('EURO')) {
+          originalCurrency = 'EUR';
+        }
+        
         return {
           date: date.trim(),
-          merchant: `${merchant.trim()} ${locationCode}`,
-          merchantCleaned: cleanMerchantName(merchant.trim()),
+          merchant: locationCode ? `${merchant} ${locationCode}` : merchant,
+          merchantCleaned: cleanMerchantName(merchant),
           amount: sgdAmount,
           currency: 'SGD',
-          originalCurrency: currency.includes('DOLLAR') ? 'USD' : currency,
+          originalCurrency: originalCurrency,
           originalAmount: parseFloat(originalAmount.replace(',', '')),
           type: 'foreign',
           linesConsumed: linesUsed
@@ -133,9 +179,9 @@ export const parseSingleTransaction = (lines, startIdx) => {
     const [, date, merchant] = simpleHeaderMatch;
     const nextLine = lines[startIdx + 1];
 
-    // Check if next line has currency
+    // Check if next line has currency - include EUROPEAN MONETARY COOP FUND
     const currencyMatch = nextLine.match(
-      /(YEN|DOLLAR|EURO|POUND)\s+([\d,]+\.?\d*)/
+      /(EUROPEAN MONETARY COOP FUND|YEN|U\.?\s*S\.?\s*DOLLAR|DOLLAR|EURO|POUND)\s+([\d,]+\.?\d*)/
     );
 
     if (currencyMatch) {
@@ -145,7 +191,8 @@ export const parseSingleTransaction = (lines, startIdx) => {
       let sgdAmount = null;
       let linesUsed = 2;
 
-      const sgdOnSameLine = nextLine.match(/([\d,]+\.\d{2})$/);
+      // Check if SGD amount is on the same line as currency
+      const sgdOnSameLine = nextLine.match(/(?:EUROPEAN MONETARY COOP FUND|YEN|U\.?\s*S\.?\s*DOLLAR|DOLLAR|EURO|POUND)\s+[\d,]+\.?\d*\s+([\d,]+\.\d{2})/);
       if (sgdOnSameLine) {
         sgdAmount = parseFloat(sgdOnSameLine[1].replace(',', ''));
       } else if (startIdx + 2 < lines.length) {
@@ -158,13 +205,25 @@ export const parseSingleTransaction = (lines, startIdx) => {
       }
 
       if (sgdAmount) {
+        // Determine currency code
+        let originalCurrency = 'EUR';
+        if (currency.includes('DOLLAR') || currency.includes('U.S')) {
+          originalCurrency = 'USD';
+        } else if (currency.includes('YEN')) {
+          originalCurrency = 'JPY';
+        } else if (currency.includes('POUND')) {
+          originalCurrency = 'GBP';
+        } else if (currency.includes('EUROPEAN MONETARY') || currency.includes('EURO')) {
+          originalCurrency = 'EUR';
+        }
+        
         return {
           date: date.trim(),
           merchant: merchant.trim(),
           merchantCleaned: cleanMerchantName(merchant.trim()),
           amount: sgdAmount,
           currency: 'SGD',
-          originalCurrency: currency.includes('DOLLAR') ? 'USD' : currency,
+          originalCurrency: originalCurrency,
           originalAmount: parseFloat(originalAmount.replace(',', '')),
           type: 'foreign',
           linesConsumed: linesUsed
