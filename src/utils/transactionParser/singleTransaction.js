@@ -114,35 +114,57 @@ export const parseSingleTransaction = (lines, startIdx) => {
     console.log(`[parseSingleTransaction] Pattern 2 (Foreign currency) header matched - date: "${date}", rest: "${restOfLine}"`);
     logger.debug(`[parseSingleTransaction] Pattern 2 (Foreign currency) header matched - date: "${date}", rest: "${restOfLine}"`);
     
-    // Skip if this looks like a simple transaction (has amount at end)
-    // This prevents Pattern 2 from matching simple transactions
-    if (/\d+\.\d{2}$/.test(restOfLine.trim())) {
+    // Check if line ends with amount - this could be a foreign transaction with SGD amount on first line
+    // Format: "26 OCT SINGAPORE... ROME IT 637.84" followed by "EUROPEAN MONETARY COOP FUND 407.64"
+    const amountAtEndMatch = restOfLine.match(/^(.+?)\s+([\d,]+\.\d{2})$/);
+    let sgdAmountOnFirstLine = null;
+    let merchantOrIdentifier = restOfLine;
+    
+    if (amountAtEndMatch && startIdx + 1 < lines.length) {
+      // Check if next line has a currency indicator - if so, this is a foreign transaction
+      const nextLine = lines[startIdx + 1];
+      const hasCurrency = /(EUROPEAN MONETARY COOP FUND|YEN|U\.?\s*S\.?\s*DOLLAR|DOLLAR|EURO|POUND)/.test(nextLine);
+      
+      if (hasCurrency) {
+        // This is a foreign transaction with SGD amount on first line!
+        merchantOrIdentifier = amountAtEndMatch[1];
+        sgdAmountOnFirstLine = parseFloat(amountAtEndMatch[2].replace(',', ''));
+        console.log(`[parseSingleTransaction] Pattern 2 - Found SGD amount on first line: ${sgdAmountOnFirstLine}, merchant: "${merchantOrIdentifier}"`);
+      }
+    }
+    
+    // Skip if this looks like a simple transaction (has amount at end) AND no currency on next line
+    if (/\d+\.\d{2}$/.test(restOfLine.trim()) && !sgdAmountOnFirstLine) {
       console.log(`[parseSingleTransaction] Pattern 2 skipped - line ends with amount, likely simple transaction`);
       logger.debug(`[parseSingleTransaction] Pattern 2 skipped - line ends with amount, likely simple transaction`);
     } else if (startIdx + 1 < lines.length) {
-      // Extract location code from the end if it exists (2 uppercase letters, possibly after a space and word)
-      // Pattern: ends with "WORD IT" or " IT" or just "IT"
-      let merchantOrIdentifier = restOfLine;
+      // Extract location code from merchant/identifier (if not already extracted)
       let locationCode = null;
+      
+      // If we already extracted the merchant (because amount was on first line), extract location from it
+      // Otherwise, extract from restOfLine
+      const lineToCheck = sgdAmountOnFirstLine ? merchantOrIdentifier : restOfLine;
       
       // Check if line ends with a 2-letter uppercase code (location code)
       // Pattern 1: " WORD IT" (word followed by space and 2-letter code) - use greedy match to get the last occurrence
-      const locationMatch1 = restOfLine.match(/^(.+)\s+[A-Z]+\s+([A-Z]{2})$/);
+      const locationMatch1 = lineToCheck.match(/^(.+)\s+[A-Z]+\s+([A-Z]{2})$/);
       if (locationMatch1) {
         merchantOrIdentifier = locationMatch1[1];
         locationCode = locationMatch1[2];
+        console.log(`[parseSingleTransaction] Pattern 2 - Location code extracted (pattern 1): "${locationCode}", merchant: "${merchantOrIdentifier}"`);
         logger.debug(`[parseSingleTransaction] Pattern 2 - Location code extracted (pattern 1): "${locationCode}", merchant: "${merchantOrIdentifier}"`);
       } else {
-        // Pattern 2: " IT" (space and 2-letter code at end)
-        const locationMatch2 = restOfLine.match(/^(.+)\s+([A-Z]{2})$/);
+        // Pattern 2: " IT" (space and 2-letter code at end) - but only if not followed by amount
+        const locationMatch2 = lineToCheck.match(/^(.+)\s+([A-Z]{2})$/);
         if (locationMatch2) {
           merchantOrIdentifier = locationMatch2[1];
           locationCode = locationMatch2[2];
+          console.log(`[parseSingleTransaction] Pattern 2 - Location code extracted (pattern 2): "${locationCode}", merchant: "${merchantOrIdentifier}"`);
           logger.debug(`[parseSingleTransaction] Pattern 2 - Location code extracted (pattern 2): "${locationCode}", merchant: "${merchantOrIdentifier}"`);
-        } else {
+        } else if (!sgdAmountOnFirstLine) {
+          console.log(`[parseSingleTransaction] Pattern 2 - No location code found, using entire restOfLine as merchant`);
           logger.debug(`[parseSingleTransaction] Pattern 2 - No location code found, using entire restOfLine as merchant`);
         }
-        // If no match, no location code - use entire restOfLine as merchant
       }
       const nextLine = lines[startIdx + 1];
       console.log(`[parseSingleTransaction] Pattern 2 - Checking next line for currency: "${nextLine}"`);
@@ -158,17 +180,20 @@ export const parseSingleTransaction = (lines, startIdx) => {
         logger.debug(`[parseSingleTransaction] Pattern 2 - Currency matched: "${currencyMatch[1]}", amount: "${currencyMatch[2]}"`);
         const [, currency, originalAmount] = currencyMatch;
 
-        // Look for SGD amount (could be on same line or next line)
-        let sgdAmount = null;
-        let linesUsed = 2;
+        // Look for SGD amount (could be on first line, same line as currency, or next line)
+        let sgdAmount = sgdAmountOnFirstLine; // Use amount from first line if we found it
+        let linesUsed = sgdAmountOnFirstLine ? 2 : 2; // If amount on first line, we use 2 lines total
 
-        // Check if SGD amount is on the same line as currency (after the original amount)
-        // Pattern: CURRENCY AMOUNT SGD_AMOUNT
-        const sgdOnSameLine = nextLine.match(/(?:EUROPEAN MONETARY COOP FUND|YEN|U\.?\s*S\.?\s*DOLLAR|DOLLAR|EURO|POUND)\s+[\d,]+\.?\d*\s+([\d,]+\.\d{2})/);
-        if (sgdOnSameLine) {
-          sgdAmount = parseFloat(sgdOnSameLine[1].replace(',', ''));
-          logger.debug(`[parseSingleTransaction] Pattern 2 - SGD amount found on same line: ${sgdAmount}`);
-        } else if (startIdx + 2 < lines.length) {
+        // If we didn't find SGD amount on first line, check other locations
+        if (!sgdAmount) {
+          // Check if SGD amount is on the same line as currency (after the original amount)
+          // Pattern: CURRENCY AMOUNT SGD_AMOUNT
+          const sgdOnSameLine = nextLine.match(/(?:EUROPEAN MONETARY COOP FUND|YEN|U\.?\s*S\.?\s*DOLLAR|DOLLAR|EURO|POUND)\s+[\d,]+\.?\d*\s+([\d,]+\.\d{2})/);
+          if (sgdOnSameLine) {
+            sgdAmount = parseFloat(sgdOnSameLine[1].replace(',', ''));
+            console.log(`[parseSingleTransaction] Pattern 2 - SGD amount found on same line as currency: ${sgdAmount}`);
+            logger.debug(`[parseSingleTransaction] Pattern 2 - SGD amount found on same line: ${sgdAmount}`);
+          } else if (startIdx + 2 < lines.length) {
           // Check next line for SGD amount
           const thirdLine = lines[startIdx + 2];
           logger.debug(`[parseSingleTransaction] Pattern 2 - Checking third line for SGD amount: "${thirdLine}"`);
