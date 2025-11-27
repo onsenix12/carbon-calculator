@@ -4,6 +4,8 @@
  * Parses a single transaction from lines, handling various formats:
  * - Simple SGD transactions
  * - Foreign currency transactions (multi-line)
+ * 
+ * Fixed syntax error in Pattern 3 (commit 121dcd3)
  */
 
 import { cleanMerchantName } from '../privacyMasking';
