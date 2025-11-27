@@ -44,18 +44,48 @@ export const parseDBSTransactions = (transactionText) => {
     );
   }
 
-  logger.debug('Attempting to parse transactions from text...');
-  logger.debug(`Text sample (first 500 chars): ${maskedText.substring(0, 500)}`);
+  // Always log to console for debugging
+  console.log('═══════════════════════════════════════════════');
+  console.log('🔍 PARSING TRANSACTIONS - DEBUG INFO');
+  console.log('═══════════════════════════════════════════════');
+  console.log(`Text sample (first 500 chars): ${maskedText.substring(0, 500)}`);
   
   // Log lines for debugging
   const linesForDebug = maskedText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  logger.debug(`Total non-empty lines: ${linesForDebug.length}`);
-  logger.debug('First 20 lines:', linesForDebug.slice(0, 20));
+  console.log(`Total non-empty lines: ${linesForDebug.length}`);
+  console.log('First 30 lines:', linesForDebug.slice(0, 30));
   
   // Check for specific patterns that might indicate the problematic transactions
   const hasEuropeanMonetary = maskedText.includes('EUROPEAN MONETARY');
   const hasRomeIt = maskedText.includes('ROME IT');
   const hasSingaporeId = /SINGAPORE\d+/.test(maskedText);
+  console.log(`🔍 Debug checks: hasEuropeanMonetary=${hasEuropeanMonetary}, hasRomeIt=${hasRomeIt}, hasSingaporeId=${hasSingaporeId}`);
+  
+  if (hasEuropeanMonetary) {
+    const euroLines = linesForDebug.filter(l => l.includes('EUROPEAN MONETARY'));
+    console.log(`📋 Lines containing EUROPEAN MONETARY (${euroLines.length}):`, euroLines);
+    
+    // Find lines around EUROPEAN MONETARY to see context
+    euroLines.forEach(euroLine => {
+      const idx = linesForDebug.indexOf(euroLine);
+      console.log(`📋 Context around EUROPEAN MONETARY at line ${idx}:`);
+      console.log(`   Line ${idx - 1}: "${linesForDebug[idx - 1]}"`);
+      console.log(`   Line ${idx}: "${euroLine}"`);
+      console.log(`   Line ${idx + 1}: "${linesForDebug[idx + 1] || 'N/A'}"`);
+      console.log(`   Line ${idx + 2}: "${linesForDebug[idx + 2] || 'N/A'}"`);
+    });
+  }
+  
+  // Check for 26 OCT pattern
+  const oct26Lines = linesForDebug.filter(l => l.includes('26 OCT'));
+  if (oct26Lines.length > 0) {
+    console.log(`📋 Lines containing "26 OCT" (${oct26Lines.length}):`, oct26Lines);
+  }
+  
+  logger.debug('Attempting to parse transactions from text...');
+  logger.debug(`Text sample (first 500 chars): ${maskedText.substring(0, 500)}`);
+  logger.debug(`Total non-empty lines: ${linesForDebug.length}`);
+  logger.debug('First 20 lines:', linesForDebug.slice(0, 20));
   logger.debug(`Debug checks: hasEuropeanMonetary=${hasEuropeanMonetary}, hasRomeIt=${hasRomeIt}, hasSingaporeId=${hasSingaporeId}`);
   
   if (hasEuropeanMonetary) {

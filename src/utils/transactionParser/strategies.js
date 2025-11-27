@@ -205,6 +205,19 @@ export const lineByLineStrategy = (text, parseSingleTransaction) => {
   let failedCount = 0;
   
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  console.log(`[lineByLineStrategy] Total lines to process: ${lines.length}`);
+  console.log(`[lineByLineStrategy] First 20 lines:`, lines.slice(0, 20));
+  
+  // Check for the specific transactions we're looking for
+  const hasTargetTransactions = lines.some(l => 
+    l.includes('26 OCT') && (l.includes('SINGAPORE') || l.includes('ROME IT'))
+  );
+  if (hasTargetTransactions) {
+    console.log(`[lineByLineStrategy] ✅ Found lines with "26 OCT" and SINGAPORE/ROME IT`);
+    const targetLines = lines.filter(l => l.includes('26 OCT') && (l.includes('SINGAPORE') || l.includes('ROME IT')));
+    console.log(`[lineByLineStrategy] Target lines:`, targetLines);
+  }
+  
   logger.debug(`[lineByLineStrategy] Total lines to process: ${lines.length}`);
   logger.debug(`[lineByLineStrategy] First 10 lines:`, lines.slice(0, 10));
   
@@ -241,19 +254,24 @@ export const lineByLineStrategy = (text, parseSingleTransaction) => {
     }
     
     // Try to parse transaction
+    console.log(`[lineByLineStrategy] Attempting to parse transaction starting at line ${i}: "${line}"`);
     logger.debug(`[lineByLineStrategy] Attempting to parse transaction starting at line ${i}`);
     const transaction = parseSingleTransaction(lines, i);
     if (transaction) {
+      console.log(`[lineByLineStrategy] ✅ Transaction parsed successfully at line ${i}: ${transaction.merchant} - $${transaction.amount}`);
       logger.debug(`[lineByLineStrategy] ✅ Transaction parsed successfully at line ${i}: ${transaction.merchant} - $${transaction.amount}`);
       transactions.push(transaction);
       i += transaction.linesConsumed;
     } else {
+      console.log(`[lineByLineStrategy] ❌ Failed to parse transaction at line ${i}: "${line}"`);
       logger.debug(`[lineByLineStrategy] ❌ Failed to parse transaction at line ${i}: "${line}"`);
       failedCount++;
       i++;
     }
   }
   
+  console.log(`[lineByLineStrategy] 📊 Summary: ${transactions.length} transactions, ${skippedCount} skipped, ${failedCount} failed`);
+  console.log(`[lineByLineStrategy] Transaction amounts:`, transactions.map(t => `$${t.amount}`));
   logger.debug(`[lineByLineStrategy] Summary: ${transactions.length} transactions, ${skippedCount} skipped, ${failedCount} failed`);
   return { transactions, skippedCount, failedCount };
 };

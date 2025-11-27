@@ -22,6 +22,16 @@ import logger from '../logger';
 export const parseSingleTransaction = (lines, startIdx) => {
   const line = lines[startIdx];
   
+  // Always log to console for debugging (not filtered by log level)
+  console.log(`[parseSingleTransaction] Processing line ${startIdx}: "${line}"`);
+  console.log(`[parseSingleTransaction] Next lines available: ${lines.length - startIdx - 1}`);
+  if (startIdx + 1 < lines.length) {
+    console.log(`[parseSingleTransaction] Next line: "${lines[startIdx + 1]}"`);
+  }
+  if (startIdx + 2 < lines.length) {
+    console.log(`[parseSingleTransaction] Line after next: "${lines[startIdx + 2]}"`);
+  }
+  
   logger.debug(`[parseSingleTransaction] Processing line ${startIdx}: "${line}"`);
   logger.debug(`[parseSingleTransaction] Next lines available: ${lines.length - startIdx - 1}`);
   if (startIdx + 1 < lines.length) {
@@ -101,11 +111,13 @@ export const parseSingleTransaction = (lines, startIdx) => {
 
   if (foreignHeaderMatch) {
     const [, date, restOfLine] = foreignHeaderMatch;
+    console.log(`[parseSingleTransaction] Pattern 2 (Foreign currency) header matched - date: "${date}", rest: "${restOfLine}"`);
     logger.debug(`[parseSingleTransaction] Pattern 2 (Foreign currency) header matched - date: "${date}", rest: "${restOfLine}"`);
     
     // Skip if this looks like a simple transaction (has amount at end)
     // This prevents Pattern 2 from matching simple transactions
     if (/\d+\.\d{2}$/.test(restOfLine.trim())) {
+      console.log(`[parseSingleTransaction] Pattern 2 skipped - line ends with amount, likely simple transaction`);
       logger.debug(`[parseSingleTransaction] Pattern 2 skipped - line ends with amount, likely simple transaction`);
     } else if (startIdx + 1 < lines.length) {
       // Extract location code from the end if it exists (2 uppercase letters, possibly after a space and word)
@@ -133,6 +145,7 @@ export const parseSingleTransaction = (lines, startIdx) => {
         // If no match, no location code - use entire restOfLine as merchant
       }
       const nextLine = lines[startIdx + 1];
+      console.log(`[parseSingleTransaction] Pattern 2 - Checking next line for currency: "${nextLine}"`);
       logger.debug(`[parseSingleTransaction] Pattern 2 - Checking next line for currency: "${nextLine}"`);
 
       // Look for currency on next line - check for EUROPEAN MONETARY COOP FUND first (longest match)
@@ -141,6 +154,7 @@ export const parseSingleTransaction = (lines, startIdx) => {
       );
 
       if (currencyMatch) {
+        console.log(`[parseSingleTransaction] Pattern 2 - Currency matched: "${currencyMatch[1]}", amount: "${currencyMatch[2]}"`);
         logger.debug(`[parseSingleTransaction] Pattern 2 - Currency matched: "${currencyMatch[1]}", amount: "${currencyMatch[2]}"`);
         const [, currency, originalAmount] = currencyMatch;
 
@@ -171,6 +185,7 @@ export const parseSingleTransaction = (lines, startIdx) => {
         }
 
         if (sgdAmount) {
+          console.log(`[parseSingleTransaction] Pattern 2 - SUCCESS! Creating transaction with amount: ${sgdAmount}`);
           logger.debug(`[parseSingleTransaction] Pattern 2 - SUCCESS! Creating transaction with amount: ${sgdAmount}`);
           // Clean up merchant name - remove location code if it was captured separately
           let merchant = merchantOrIdentifier.trim();
