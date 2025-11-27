@@ -7,6 +7,7 @@
 
 import { cleanMerchantName } from '../privacyMasking';
 import { TRANSACTION_SKIP_KEYWORDS } from '../../constants';
+import logger from '../logger';
 
 /**
  * Check if a transaction should be skipped
@@ -204,6 +205,9 @@ export const lineByLineStrategy = (text, parseSingleTransaction) => {
   let failedCount = 0;
   
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  logger.debug(`[lineByLineStrategy] Total lines to process: ${lines.length}`);
+  logger.debug(`[lineByLineStrategy] First 10 lines:`, lines.slice(0, 10));
+  
   const headerKeywords = ['NEW TRANSACTIONS', 'AVISENNA GUSTA', 'DESCRIPTION', 'AMOUNT', 'DATE'];
   
   let i = 0;
@@ -212,6 +216,7 @@ export const lineByLineStrategy = (text, parseSingleTransaction) => {
     
     // Skip header lines
     if (headerKeywords.some(keyword => line.includes(keyword))) {
+      logger.debug(`[lineByLineStrategy] Line ${i} skipped (header): "${line}"`);
       skippedCount++;
       i++;
       continue;
@@ -221,6 +226,7 @@ export const lineByLineStrategy = (text, parseSingleTransaction) => {
     if (line.includes('BILL PAYMENT') || 
         line.includes('PAYMENT - DBS') ||
         /\d+\.\d{2}\s+CR$/.test(line)) {
+      logger.debug(`[lineByLineStrategy] Line ${i} skipped (bill payment/credit): "${line}"`);
       skippedCount++;
       i++;
       continue;
@@ -228,22 +234,27 @@ export const lineByLineStrategy = (text, parseSingleTransaction) => {
     
     // Skip fees
     if (TRANSACTION_SKIP_KEYWORDS.some(keyword => line.includes(keyword))) {
+      logger.debug(`[lineByLineStrategy] Line ${i} skipped (fee): "${line}"`);
       skippedCount++;
       i++;
       continue;
     }
     
     // Try to parse transaction
+    logger.debug(`[lineByLineStrategy] Attempting to parse transaction starting at line ${i}`);
     const transaction = parseSingleTransaction(lines, i);
     if (transaction) {
+      logger.debug(`[lineByLineStrategy] ✅ Transaction parsed successfully at line ${i}: ${transaction.merchant} - $${transaction.amount}`);
       transactions.push(transaction);
       i += transaction.linesConsumed;
     } else {
+      logger.debug(`[lineByLineStrategy] ❌ Failed to parse transaction at line ${i}: "${line}"`);
       failedCount++;
       i++;
     }
   }
   
+  logger.debug(`[lineByLineStrategy] Summary: ${transactions.length} transactions, ${skippedCount} skipped, ${failedCount} failed`);
   return { transactions, skippedCount, failedCount };
 };
 

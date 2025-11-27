@@ -46,6 +46,22 @@ export const parseDBSTransactions = (transactionText) => {
 
   logger.debug('Attempting to parse transactions from text...');
   logger.debug(`Text sample (first 500 chars): ${maskedText.substring(0, 500)}`);
+  
+  // Log lines for debugging
+  const linesForDebug = maskedText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  logger.debug(`Total non-empty lines: ${linesForDebug.length}`);
+  logger.debug('First 20 lines:', linesForDebug.slice(0, 20));
+  
+  // Check for specific patterns that might indicate the problematic transactions
+  const hasEuropeanMonetary = maskedText.includes('EUROPEAN MONETARY');
+  const hasRomeIt = maskedText.includes('ROME IT');
+  const hasSingaporeId = /SINGAPORE\d+/.test(maskedText);
+  logger.debug(`Debug checks: hasEuropeanMonetary=${hasEuropeanMonetary}, hasRomeIt=${hasRomeIt}, hasSingaporeId=${hasSingaporeId}`);
+  
+  if (hasEuropeanMonetary) {
+    const euroLines = linesForDebug.filter(l => l.includes('EUROPEAN MONETARY'));
+    logger.debug(`Lines containing EUROPEAN MONETARY:`, euroLines);
+  }
 
   let transactions = [];
   let skippedCount = 0;
