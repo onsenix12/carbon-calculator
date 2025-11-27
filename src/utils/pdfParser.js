@@ -240,11 +240,12 @@ export const extractTransactionSection = (fullText) => {
   ];
   
   // Try multiple possible end markers
+  // Order matters: prioritize "TOTAL" over "SUB-TOTAL" since "TOTAL" is typically the final summary
   const endMarkers = [
+    'TOTAL',
     'SUB-TOTAL',
     'SUBTOTAL',
     'SUB TOTAL',
-    'TOTAL',
     'SUMMARY'
   ];
 
@@ -276,17 +277,35 @@ export const extractTransactionSection = (fullText) => {
   }
 
   // Find end marker (search after start marker)
+  // IMPORTANT: Find the LAST occurrence of end markers to capture all transactions
+  // (DBS statements may have multiple SUB-TOTAL sections, we want the final one)
   const textAfterStart = fullText.substring(startIndex);
+  let lastEndIndex = -1;
+  let lastEndMarker = null;
+  
   for (const marker of endMarkers) {
-    const index = textAfterStart.indexOf(marker);
-    if (index !== -1) {
-      endIndex = startIndex + index;
-      logger.debug(`Found end marker: "${marker}" at position ${endIndex}`);
-      break;
+    // Find all occurrences of this marker
+    let searchIndex = 0;
+    let foundIndex = -1;
+    
+    while (true) {
+      const index = textAfterStart.indexOf(marker, searchIndex);
+      if (index === -1) break;
+      foundIndex = startIndex + index;
+      searchIndex = index + 1; // Continue searching after this occurrence
+    }
+    
+    // Keep track of the last (rightmost) occurrence
+    if (foundIndex !== -1 && (lastEndIndex === -1 || foundIndex > lastEndIndex)) {
+      lastEndIndex = foundIndex;
+      lastEndMarker = marker;
     }
   }
-
-  if (endIndex === -1) {
+  
+  if (lastEndIndex !== -1) {
+    endIndex = lastEndIndex;
+    logger.debug(`Found last end marker: "${lastEndMarker}" at position ${endIndex}`);
+  } else {
     logger.warn('Could not find end marker. Will use end of document.');
     logger.debug('Tried markers:', endMarkers);
     // Use end of document as fallback
@@ -308,8 +327,17 @@ export const extractTransactionSection = (fullText) => {
   const statementDateMatch = fullText.match(/STATEMENT DATE.*?(\d{2} [A-Z][a-z]{2} \d{4})/);
   const statementDate = statementDateMatch ? statementDateMatch[1] : null;
 
-  // Try to extract SUB-TOTAL amount for validation
-  const subTotalMatch = fullText.match(/SUB-TOTAL:\s*([\d,]+\.\d{2})/);
+  // Try to extract SUB-TOTAL or TOTAL amount for validation
+  // Check for SUB-TOTAL first, then fall back to TOTAL
+  let subTotalMatch = fullText.match(/SUB-TOTAL:\s*([\d,]+\.\d{2})/);
+  if (!subTotalMatch) {
+    // Try to find the final TOTAL (not just any TOTAL, but one that looks like a summary)
+    const totalMatches = [...fullText.matchAll(/TOTAL:\s*([\d,]+\.\d{2})/g)];
+    if (totalMatches.length > 0) {
+      // Use the last TOTAL match (most likely the final summary)
+      subTotalMatch = totalMatches[totalMatches.length - 1];
+    }
+  }
   const expectedTotal = subTotalMatch ? parseFloat(subTotalMatch[1].replace(',', '')) : null;
 
   const metadata = {
